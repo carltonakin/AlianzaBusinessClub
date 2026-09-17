@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Nexus Hub",
+    "slug": "nexus-hub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/app-icon-pcy.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/app-icon-pcy.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.placeholder.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/app-icon-pcy.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.placeholder.app"
+    },
+    "web": {
+      "favicon": "./assets/images/newly.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      "expo-web-browser",
+      "expo-secure-store"
+    ],
+    "scheme": "nexushub",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {}
+    }
+  }
+}
