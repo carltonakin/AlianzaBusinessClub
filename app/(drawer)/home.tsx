@@ -69,6 +69,7 @@ export default function HomeScreen() {
       Animated.timing(contentAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchData = async () => {

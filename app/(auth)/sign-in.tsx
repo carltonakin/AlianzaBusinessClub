@@ -43,6 +43,7 @@ export default function SignInScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSignIn = async () => {

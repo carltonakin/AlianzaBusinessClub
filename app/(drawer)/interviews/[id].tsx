@@ -29,6 +29,7 @@ export default function InterviewDetailScreen() {
 
   useEffect(() => {
     if (id) fetchInterview();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchInterview = async () => {

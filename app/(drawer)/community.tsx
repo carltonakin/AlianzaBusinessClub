@@ -42,6 +42,7 @@ export default function CommunityScreen() {
       fetchPosts();
       fetchLikedPosts();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPaid]);
 
   const fetchPosts = async () => {

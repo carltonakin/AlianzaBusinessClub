@@ -43,6 +43,7 @@ function RootNavigator() {
     } else if (session && inAuthGroup) {
       router.replace('/(drawer)/home');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, loading, segments]);
 
   return (

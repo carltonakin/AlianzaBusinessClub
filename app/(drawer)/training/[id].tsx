@@ -28,6 +28,7 @@ export default function TrainingDetailScreen() {
 
   useEffect(() => {
     if (id) fetchPost();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchPost = async () => {
