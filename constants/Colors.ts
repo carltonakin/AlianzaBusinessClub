@@ -1,3 +1,24 @@
+export const COLORS = {
+  primary: '#1B4FD8',
+  primaryMuted: 'rgba(27,79,216,0.10)',
+  primaryDark: '#1340B0',
+  accent: '#F59E0B',
+  accentMuted: 'rgba(245,158,11,0.12)',
+  background: '#F4F6FB',
+  surface: '#FFFFFF',
+  surfaceSecondary: '#EEF1F8',
+  text: '#0F1729',
+  textSecondary: '#4A5568',
+  textTertiary: '#94A3B8',
+  border: 'rgba(27,79,216,0.08)',
+  divider: 'rgba(27,79,216,0.05)',
+  success: '#10B981',
+  danger: '#EF4444',
+  warning: '#F59E0B',
+  free: '#10B981',
+  paid: '#1B4FD8',
+};
+
 const tintColorLight = "#0a7ea4";
 const tintColorDark = "#fff";
 
