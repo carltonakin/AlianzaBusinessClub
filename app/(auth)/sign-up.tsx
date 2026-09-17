@@ -73,12 +73,11 @@ export default function SignUpScreen() {
       }
       if (data.user) {
         console.log('[SignUp] User created:', data.user.id, 'Upserting profile with tier:', selectedTier);
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          email: data.user.email ?? email.trim(),
-          full_name: fullName.trim(),
-          membership_tier: selectedTier,
-        });
+
+	        await supabase
+          .from('profiles')
+          .update({ membership_tier: selectedTier, full_name: fullName.trim() })
+          .eq('id', data.user.id);
         console.log('[SignUp] Profile upserted, navigating to home');
         router.replace('/(drawer)/home');
       }
