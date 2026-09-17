@@ -74,7 +74,7 @@ export default function SignUpScreen() {
       if (data.user) {
         console.log('[SignUp] User created:', data.user.id, 'Upserting profile with tier:', selectedTier);
 
-	        await supabase
+        await supabase
           .from('profiles')
           .update({ membership_tier: selectedTier, full_name: fullName.trim() })
           .eq('id', data.user.id);
