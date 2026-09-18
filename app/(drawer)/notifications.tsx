@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Linking } from 'react-native';
 import { Bell } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
@@ -11,6 +11,29 @@ interface PushNotification {
   body: string;
   target_tier: string;
   sent_at: string;
+}
+
+function renderBodyWithLinks(body: string): React.ReactNode {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = body.split(urlRegex);
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      urlRegex.lastIndex = 0;
+      return (
+        <Text
+          key={index}
+          style={styles.linkText}
+          onPress={() => {
+            console.log('[Notifications] URL tapped:', part);
+            Linking.openURL(part);
+          }}
+        >
+          {part}
+        </Text>
+      );
+    }
+    return <Text key={index}>{part}</Text>;
+  });
 }
 
 function getRelativeTime(dateStr: string): string {
@@ -78,7 +101,7 @@ export default function NotificationsScreen() {
         </View>
         <View style={styles.cardBody}>
           <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardBody2}>{item.body}</Text>
+          <Text style={styles.cardBody2}>{renderBodyWithLinks(item.body)}</Text>
           <Text style={styles.cardTime}>{relativeTime}</Text>
         </View>
       </View>
@@ -197,5 +220,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Outfit_400Regular',
     color: COLORS.textTertiary,
+  },
+  linkText: {
+    color: COLORS.primary,
+    textDecorationLine: 'underline',
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 13,
   },
 });

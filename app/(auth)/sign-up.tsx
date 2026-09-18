@@ -10,8 +10,6 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Modal,
-  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,7 +27,7 @@ export default function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -75,8 +73,11 @@ export default function SignUpScreen() {
           .from('profiles')
           .update({ membership_tier: 'paid', full_name: fullName.trim() })
           .eq('id', data.user.id);
-        console.log('[SignUp] Profile updated, showing email verification modal');
-        setShowVerifyModal(true);
+        console.log('[SignUp] Profile updated, showing inline success message');
+        setSuccess(true);
+        setTimeout(() => {
+          router.replace('/(drawer)/home');
+        }, 2000);
       }
     } catch (err: any) {
       console.error('[SignUp] Unexpected error:', err);
@@ -89,16 +90,6 @@ export default function SignUpScreen() {
   const handleGoToSignIn = () => {
     console.log('[SignUp] Navigate to sign in pressed');
     router.back();
-  };
-
-  const handleOpenEmailApp = () => {
-    console.log('[SignUp] Open email app pressed');
-    Linking.openURL('mailto:');
-  };
-
-  const handleVerifyLater = () => {
-    console.log('[SignUp] Verify later pressed, navigating to home');
-    router.replace('/(drawer)/home');
   };
 
   return (
@@ -132,6 +123,13 @@ export default function SignUpScreen() {
             {error ? (
               <View style={styles.errorBox}>
                 <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+            {success ? (
+              <View style={styles.successBox}>
+                <Text style={styles.successText}>
+                  Account created! Please check your email to verify your account.
+                </Text>
               </View>
             ) : null}
 
@@ -221,29 +219,6 @@ export default function SignUpScreen() {
           </View>
         </Animated.View>
       </ScrollView>
-
-      {/* Email Verification Modal */}
-      <Modal visible={showVerifyModal} transparent animationType="fade">
-        <View style={styles.verifyOverlay}>
-          <View style={styles.verifyCard}>
-            <View style={styles.verifyIcon}>
-              <Mail size={48} color={COLORS.primary} />
-            </View>
-            <Text style={styles.verifyTitle}>Check Your Email</Text>
-            <Text style={styles.verifyBody}>
-              {"We've sent a verification link to "}
-              <Text style={{ fontFamily: 'Outfit_600SemiBold', color: COLORS.text }}>{email}</Text>
-              {". Please check your inbox and verify your email to continue."}
-            </Text>
-            <AnimatedPressable onPress={handleOpenEmailApp} style={styles.verifyEmailBtn}>
-              <Text style={styles.verifyEmailBtnText}>Open Email App</Text>
-            </AnimatedPressable>
-            <Pressable onPress={handleVerifyLater} hitSlop={8}>
-              <Text style={styles.verifyLaterLink}>I'll verify later</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -394,56 +369,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_600SemiBold',
     color: COLORS.primary,
   },
-  // Verify modal styles
-  verifyOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  verifyCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 24,
-    padding: 28,
-    alignItems: 'center',
-    width: '100%',
-  },
-  verifyIcon: {
+  successBox: {
+    backgroundColor: '#16a34a15',
+    borderRadius: 10,
+    padding: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#16a34a30',
   },
-  verifyTitle: {
-    fontSize: 22,
-    fontFamily: 'Outfit_700Bold',
-    color: COLORS.text,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  verifyBody: {
-    fontSize: 14,
+  successText: {
+    color: '#16a34a',
+    fontSize: 13,
     fontFamily: 'Outfit_400Regular',
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  verifyEmailBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 14,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    marginBottom: 12,
-  },
-  verifyEmailBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontFamily: 'Outfit_600SemiBold',
-  },
-  verifyLaterLink: {
-    fontSize: 14,
-    fontFamily: 'Outfit_500Medium',
-    color: COLORS.textSecondary,
   },
 });
