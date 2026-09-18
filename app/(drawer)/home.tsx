@@ -107,7 +107,8 @@ export default function HomeScreen() {
   };
 
   const handleBellPress = () => {
-    console.log('[Home] Bell icon pressed');
+    console.log('[Home] Bell icon pressed — navigating to notifications');
+    router.push('/(drawer)/notifications');
   };
 
   const renderEventCard = ({ item }: { item: Event }) => {
@@ -230,6 +231,21 @@ export default function HomeScreen() {
         </Animated.View>
 
         <Animated.View style={{ opacity: contentAnim }}>
+          {/* Notifications Banner */}
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[Home] Notifications banner pressed');
+              router.push('/(drawer)/notifications');
+            }}
+            style={styles.notifBanner}
+          >
+            <View style={styles.notifBannerLeft}>
+              <Bell size={18} color={COLORS.primary} />
+              <Text style={styles.notifBannerText}>Notifications</Text>
+            </View>
+            <Text style={styles.notifBannerArrow}>›</Text>
+          </AnimatedPressable>
+
           {/* Quick Access */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Quick Access</Text>
@@ -591,5 +607,32 @@ const styles = StyleSheet.create({
   },
   bellButton: {
     padding: 4,
+  },
+  notifBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  notifBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  notifBannerText: {
+    fontSize: 15,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.text,
+  },
+  notifBannerArrow: {
+    fontSize: 20,
+    color: COLORS.textTertiary,
   },
 });

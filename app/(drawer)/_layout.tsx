@@ -24,6 +24,7 @@ export default function DrawerLayout() {
       <Drawer.Screen name="profile" />
       <Drawer.Screen name="admin" />
       <Drawer.Screen name="webview" />
+      <Drawer.Screen name="notifications" />
     </Drawer>
   );
 }
