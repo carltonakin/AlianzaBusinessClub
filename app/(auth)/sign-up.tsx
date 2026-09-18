@@ -10,18 +10,15 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Modal,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mail, Lock, User, Eye, EyeOff, Check } from 'lucide-react-native';
+import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-
-type MembershipTier = 'free' | 'paid';
-
-const FREE_FEATURES = ['Magazine Access', 'Events Calendar', 'Store Access'];
-const PAID_FEATURES = ['Everything in Free', 'Training Library', 'Expert Interviews', 'Live Webinars', 'Community Forum'];
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -30,9 +27,9 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<MembershipTier>('free');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -46,7 +43,7 @@ export default function SignUpScreen() {
   }, []);
 
   const handleSignUp = async () => {
-    console.log('[SignUp] Create account pressed, email:', email, 'tier:', selectedTier);
+    console.log('[SignUp] Create account pressed, email:', email);
     if (!fullName.trim() || !email.trim() || !password.trim()) {
       setError('Please fill in all fields.');
       return;
@@ -72,14 +69,14 @@ export default function SignUpScreen() {
         return;
       }
       if (data.user) {
-        console.log('[SignUp] User created:', data.user.id, 'Upserting profile with tier:', selectedTier);
+        console.log('[SignUp] User created:', data.user.id, 'Upserting profile with tier: paid');
 
         await supabase
           .from('profiles')
-          .update({ membership_tier: selectedTier, full_name: fullName.trim() })
+          .update({ membership_tier: 'paid', full_name: fullName.trim() })
           .eq('id', data.user.id);
-        console.log('[SignUp] Profile upserted, navigating to home');
-        router.replace('/(drawer)/home');
+        console.log('[SignUp] Profile updated, showing email verification modal');
+        setShowVerifyModal(true);
       }
     } catch (err: any) {
       console.error('[SignUp] Unexpected error:', err);
@@ -94,9 +91,14 @@ export default function SignUpScreen() {
     router.back();
   };
 
-  const handleTierSelect = (tier: MembershipTier) => {
-    console.log('[SignUp] Membership tier selected:', tier);
-    setSelectedTier(tier);
+  const handleOpenEmailApp = () => {
+    console.log('[SignUp] Open email app pressed');
+    Linking.openURL('mailto:');
+  };
+
+  const handleVerifyLater = () => {
+    console.log('[SignUp] Verify later pressed, navigating to home');
+    router.replace('/(drawer)/home');
   };
 
   return (
@@ -195,59 +197,8 @@ export default function SignUpScreen() {
               </View>
             </View>
 
-            {/* Membership Tier Selection */}
-            <Text style={styles.tierTitle}>Choose Your Membership</Text>
-            <View style={styles.tierRow}>
-              {/* Free Card */}
-              <AnimatedPressable
-                onPress={() => handleTierSelect('free')}
-                style={[
-                  styles.tierCard,
-                  selectedTier === 'free' && styles.tierCardSelected,
-                ]}
-              >
-                <View style={[styles.tierBadge, { backgroundColor: COLORS.free }]}>
-                  <Text style={styles.tierBadgeText}>FREE</Text>
-                </View>
-                <Text style={styles.tierCardTitle}>Free Member</Text>
-                {FREE_FEATURES.map((f) => (
-                  <View key={f} style={styles.featureRow}>
-                    <Check size={12} color={COLORS.free} />
-                    <Text style={styles.featureText}>{f}</Text>
-                  </View>
-                ))}
-                {selectedTier === 'free' ? (
-                  <View style={styles.selectedIndicator}>
-                    <Check size={14} color={COLORS.primary} />
-                  </View>
-                ) : null}
-              </AnimatedPressable>
-
-              {/* Paid Card */}
-              <AnimatedPressable
-                onPress={() => handleTierSelect('paid')}
-                style={[
-                  styles.tierCard,
-                  selectedTier === 'paid' && styles.tierCardSelected,
-                ]}
-              >
-                <View style={[styles.tierBadge, { backgroundColor: COLORS.paid }]}>
-                  <Text style={styles.tierBadgeText}>PAID</Text>
-                </View>
-                <Text style={styles.tierCardTitle}>Paid Member</Text>
-                {PAID_FEATURES.map((f) => (
-                  <View key={f} style={styles.featureRow}>
-                    <Check size={12} color={COLORS.paid} />
-                    <Text style={styles.featureText}>{f}</Text>
-                  </View>
-                ))}
-                {selectedTier === 'paid' ? (
-                  <View style={styles.selectedIndicator}>
-                    <Check size={14} color={COLORS.primary} />
-                  </View>
-                ) : null}
-              </AnimatedPressable>
-            </View>
+            {/* Explore section */}
+            <Text style={styles.exploreTitle}>Explore Online With Us Now.</Text>
 
             <AnimatedPressable
               onPress={handleSignUp}
@@ -270,6 +221,29 @@ export default function SignUpScreen() {
           </View>
         </Animated.View>
       </ScrollView>
+
+      {/* Email Verification Modal */}
+      <Modal visible={showVerifyModal} transparent animationType="fade">
+        <View style={styles.verifyOverlay}>
+          <View style={styles.verifyCard}>
+            <View style={styles.verifyIcon}>
+              <Mail size={48} color={COLORS.primary} />
+            </View>
+            <Text style={styles.verifyTitle}>Check Your Email</Text>
+            <Text style={styles.verifyBody}>
+              {"We've sent a verification link to "}
+              <Text style={{ fontFamily: 'Outfit_600SemiBold', color: COLORS.text }}>{email}</Text>
+              {". Please check your inbox and verify your email to continue."}
+            </Text>
+            <AnimatedPressable onPress={handleOpenEmailApp} style={styles.verifyEmailBtn}>
+              <Text style={styles.verifyEmailBtnText}>Open Email App</Text>
+            </AnimatedPressable>
+            <Pressable onPress={handleVerifyLater} hitSlop={8}>
+              <Text style={styles.verifyLaterLink}>I'll verify later</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -379,77 +353,12 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: 4,
   },
-  tierTitle: {
-    fontSize: 15,
+  exploreTitle: {
+    fontSize: 16,
     fontFamily: 'Outfit_600SemiBold',
     color: COLORS.text,
-    marginBottom: 12,
-    marginTop: 4,
-  },
-  tierRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  tierCard: {
-    flex: 1,
-    backgroundColor: COLORS.surfaceSecondary,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    position: 'relative',
-  },
-  tierCardSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primaryMuted,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  tierBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  tierBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontFamily: 'Outfit_700Bold',
-    letterSpacing: 0.8,
-  },
-  tierCardTitle: {
-    fontSize: 13,
-    fontFamily: 'Outfit_600SemiBold',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 4,
-  },
-  featureText: {
-    fontSize: 11,
-    fontFamily: 'Outfit_400Regular',
-    color: COLORS.textSecondary,
-    flex: 1,
-  },
-  selectedIndicator: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: COLORS.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 16,
+    marginTop: 8,
   },
   createButton: {
     backgroundColor: COLORS.primary,
@@ -484,5 +393,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
     color: COLORS.primary,
+  },
+  // Verify modal styles
+  verifyOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  verifyCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
+    width: '100%',
+  },
+  verifyIcon: {
+    marginBottom: 16,
+  },
+  verifyTitle: {
+    fontSize: 22,
+    fontFamily: 'Outfit_700Bold',
+    color: COLORS.text,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  verifyBody: {
+    fontSize: 14,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  verifyEmailBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 12,
+  },
+  verifyEmailBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  verifyLaterLink: {
+    fontSize: 14,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.textSecondary,
   },
 });

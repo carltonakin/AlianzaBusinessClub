@@ -114,6 +114,17 @@ interface HomeSectionRow {
   requires_paid: boolean;
 }
 
+interface HomeBannerRow {
+  id: string;
+  label: string;
+  cover_image_url: string | null;
+  redirect_url: string;
+  open_in_app: boolean;
+  menu_tag: string | null;
+  sort_order: number;
+  is_enabled: boolean;
+}
+
 const SECTION_ROUTES: Record<string, string> = {
   events: '/(drawer)/events',
   training: '/(drawer)/training',
@@ -143,6 +154,10 @@ export default function HomeScreen() {
   // Section content keyed by section id
   const [sectionContent, setSectionContent] = useState<Record<string, (Event | TrainingPost | Interview | Webinar)[]>>({});
 
+  // Home banners
+  const [homeBanners, setHomeBanners] = useState<HomeBannerRow[]>([]);
+  const [bannersLoading, setBannersLoading] = useState(true);
+
   useEffect(() => {
     Animated.sequence([
       Animated.timing(heroAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
@@ -151,6 +166,7 @@ export default function HomeScreen() {
 
     fetchQuickAccess();
     fetchHomeSections();
+    fetchHomeBanners();
 
     // Real-time subscription for quick access
     const qaSub = supabase
@@ -170,12 +186,39 @@ export default function HomeScreen() {
       })
       .subscribe();
 
+    // Real-time subscription for home banners
+    const bannerSub = supabase
+      .channel('home_banners_rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'home_banners' }, () => {
+        console.log('[Home] Real-time: home_banners changed, re-fetching');
+        fetchHomeBanners();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(qaSub);
       supabase.removeChannel(hsSub);
+      supabase.removeChannel(bannerSub);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchHomeBanners = async () => {
+    console.log('[Home] Fetching home banners');
+    try {
+      const { data, error } = await supabase
+        .from('home_banners')
+        .select('*')
+        .eq('is_enabled', true)
+        .order('sort_order', { ascending: true });
+      if (error) console.error('[Home] Banners fetch error:', error.message);
+      else setHomeBanners((data as HomeBannerRow[]) ?? []);
+    } catch (err) {
+      console.error('[Home] Banners fetch unexpected error:', err);
+    } finally {
+      setBannersLoading(false);
+    }
+  };
 
   const fetchQuickAccess = async () => {
     console.log('[Home] Fetching quick access items');
@@ -300,6 +343,20 @@ export default function HomeScreen() {
       } else if (item.external_url) {
         Linking.openURL(item.external_url);
       }
+    }
+  };
+
+  const handleBannerPress = (banner: HomeBannerRow) => {
+    console.log('[Home] Banner pressed:', banner.label, 'open_in_app:', banner.open_in_app);
+    if (!profile) {
+      console.log('[Home] Banner press — not logged in, redirecting to sign-in');
+      router.push('/(auth)/sign-in');
+      return;
+    }
+    if (banner.open_in_app) {
+      router.push({ pathname: '/(drawer)/webview', params: { url: banner.redirect_url, title: banner.label } } as any);
+    } else {
+      Linking.openURL(banner.redirect_url);
     }
   };
 
@@ -564,6 +621,32 @@ export default function HomeScreen() {
     );
   };
 
+  const renderBannerItem = ({ item }: { item: HomeBannerRow }) => (
+    <AnimatedPressable onPress={() => handleBannerPress(item)} style={styles.bannerCard}>
+      {item.cover_image_url ? (
+        <Image source={{ uri: item.cover_image_url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      ) : (
+        <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={StyleSheet.absoluteFillObject} />
+      )}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.65)']}
+        style={[StyleSheet.absoluteFillObject, { justifyContent: 'flex-end', padding: 14 }]}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+          <View style={{ flex: 1 }}>
+            {item.menu_tag ? (
+              <View style={styles.bannerTag}>
+                <Text style={styles.bannerTagText}>{item.menu_tag}</Text>
+              </View>
+            ) : null}
+            <Text style={styles.bannerLabel} numberOfLines={2}>{item.label}</Text>
+          </View>
+          <Text style={styles.bannerArrow}>›</Text>
+        </View>
+      </LinearGradient>
+    </AnimatedPressable>
+  );
+
   const bellElement = (
     <Pressable onPress={handleBellPress} style={styles.bellButton} hitSlop={8}>
       <Bell size={22} color={COLORS.text} />
@@ -619,6 +702,22 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.notifBannerArrow}>›</Text>
           </AnimatedPressable>
+
+          {/* Home Banners */}
+          {!bannersLoading && homeBanners.length > 0 ? (
+            <View style={styles.bannersSection}>
+              <FlatList
+                data={homeBanners}
+                renderItem={renderBannerItem}
+                keyExtractor={(item) => item.id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+                snapToInterval={screenWidth - 32 + 12}
+                decelerationRate="fast"
+              />
+            </View>
+          ) : null}
 
           {/* Quick Access 5×5 Grid */}
           <View style={styles.section}>
@@ -939,5 +1038,39 @@ const styles = StyleSheet.create({
   notifBannerArrow: {
     fontSize: 20,
     color: COLORS.textTertiary,
+  },
+  bannersSection: {
+    marginBottom: 8,
+  },
+  bannerCard: {
+    width: screenWidth - 32,
+    height: 160,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  bannerTag: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  bannerTagText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  bannerLabel: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontFamily: 'Outfit_700Bold',
+    lineHeight: 20,
+  },
+  bannerArrow: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 24,
+    marginLeft: 8,
   },
 });

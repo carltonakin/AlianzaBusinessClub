@@ -163,6 +163,17 @@ interface HomeSectionRow {
   requires_paid: boolean;
 }
 
+interface HomeBannerRow {
+  id: string;
+  label: string;
+  cover_image_url: string | null;
+  redirect_url: string;
+  open_in_app: boolean;
+  menu_tag: string | null;
+  sort_order: number;
+  is_enabled: boolean;
+}
+
 // ─── Add-item form state shapes ───────────────────────────────────────────────
 
 interface TrainingForm {
@@ -1812,6 +1823,137 @@ function HomeSectionModal({
   );
 }
 
+// ─── HomeBannerModal ──────────────────────────────────────────────────────────
+
+function HomeBannerModal({
+  visible,
+  onClose,
+  onSaved,
+  item,
+  nextSortOrder,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  item: HomeBannerRow | null;
+  nextSortOrder: number;
+}) {
+  const isEdit = item !== null;
+  const [label, setLabel] = useState('');
+  const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [redirectUrl, setRedirectUrl] = useState('');
+  const [menuTag, setMenuTag] = useState('');
+  const [openInApp, setOpenInApp] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      if (item) {
+        setLabel(item.label);
+        setCoverImageUrl(item.cover_image_url ?? '');
+        setRedirectUrl(item.redirect_url);
+        setMenuTag(item.menu_tag ?? '');
+        setOpenInApp(item.open_in_app);
+        setIsEnabled(item.is_enabled);
+      } else {
+        setLabel('');
+        setCoverImageUrl('');
+        setRedirectUrl('');
+        setMenuTag('');
+        setOpenInApp(false);
+        setIsEnabled(true);
+      }
+    }
+  }, [visible, item]);
+
+  const handleSave = async () => {
+    if (!label.trim()) {
+      Alert.alert('Validation', 'Label is required.');
+      return;
+    }
+    if (!redirectUrl.trim().startsWith('http')) {
+      Alert.alert('Validation', 'Redirect URL must start with http.');
+      return;
+    }
+    console.log('[Admin] Saving home banner:', label, 'mode:', isEdit ? 'edit' : 'add');
+    setSaving(true);
+    const payload = {
+      label: label.trim(),
+      cover_image_url: coverImageUrl.trim() || null,
+      redirect_url: redirectUrl.trim(),
+      menu_tag: menuTag.trim() || null,
+      open_in_app: openInApp,
+      is_enabled: isEnabled,
+    };
+    let error: any = null;
+    if (isEdit && item) {
+      const result = await supabase.from('home_banners').update(payload).eq('id', item.id);
+      error = result.error;
+    } else {
+      const result = await supabase.from('home_banners').insert({ ...payload, sort_order: nextSortOrder });
+      error = result.error;
+    }
+    setSaving(false);
+    if (error) {
+      console.error('[Admin] Error saving home banner:', error.message);
+      Alert.alert('Error', error.message);
+      return;
+    }
+    console.log('[Admin] Home banner saved successfully');
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={modalStyles.container}>
+        <View style={modalStyles.header}>
+          <Text style={modalStyles.title}>{isEdit ? 'Edit Banner' : 'Add Banner'}</Text>
+          <AnimatedPressable onPress={onClose} style={modalStyles.closeBtn}>
+            <X size={20} color={COLORS.text} />
+          </AnimatedPressable>
+        </View>
+        <ScrollView style={modalStyles.body} showsVerticalScrollIndicator={false}>
+          <FormInput label="Label *" value={label} onChangeText={setLabel} placeholder="Banner label" />
+          <FormInput label="Cover Image URL" value={coverImageUrl} onChangeText={setCoverImageUrl} placeholder="https://" />
+          <FormInput label="Redirect URL *" value={redirectUrl} onChangeText={setRedirectUrl} placeholder="https://" />
+          <FormInput label="Menu Tag" value={menuTag} onChangeText={setMenuTag} placeholder="e.g. Home, Events, Training" />
+          <SwitchRow
+            label="Open Inside App"
+            value={openInApp}
+            onValueChange={(v) => {
+              console.log('[Admin] Banner open_in_app →', v);
+              setOpenInApp(v);
+            }}
+          />
+          <SwitchRow
+            label="Enabled"
+            value={isEnabled}
+            onValueChange={(v) => {
+              console.log('[Admin] Banner is_enabled →', v);
+              setIsEnabled(v);
+            }}
+          />
+        </ScrollView>
+        <View style={modalStyles.footer}>
+          <AnimatedPressable
+            onPress={handleSave}
+            disabled={saving}
+            style={[modalStyles.saveBtn, saving && modalStyles.saveBtnDisabled]}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={modalStyles.saveBtnText}>{isEdit ? 'Save Changes' : 'Add Banner'}</Text>
+            )}
+          </AnimatedPressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Content list rows ────────────────────────────────────────────────────────
 
 function ContentRow({
@@ -1965,6 +2107,12 @@ export default function AdminScreen() {
   const [showHomeSectionModal, setShowHomeSectionModal] = useState(false);
   const [editingHomeSection, setEditingHomeSection] = useState<HomeSectionRow | null>(null);
 
+  // Home banners management
+  const [adminHomeBanners, setAdminHomeBanners] = useState<HomeBannerRow[]>([]);
+  const [homeBannersLoading, setHomeBannersLoading] = useState(false);
+  const [showHomeBannerModal, setShowHomeBannerModal] = useState(false);
+  const [editingHomeBanner, setEditingHomeBanner] = useState<HomeBannerRow | null>(null);
+
   const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
@@ -1975,6 +2123,7 @@ export default function AdminScreen() {
     fetchMenuConfig();
     fetchQuickAccess();
     fetchAdminHomeSections();
+    fetchAdminHomeBanners();
 
     // Real-time subscriptions
     const qaSub = supabase
@@ -1993,9 +2142,18 @@ export default function AdminScreen() {
       })
       .subscribe();
 
+    const bannerSub = supabase
+      .channel('admin_home_banners')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'home_banners' }, () => {
+        console.log('[Admin] Real-time: home_banners changed');
+        fetchAdminHomeBanners();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(qaSub);
       supabase.removeChannel(hsSub);
+      supabase.removeChannel(bannerSub);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
@@ -2158,6 +2316,18 @@ export default function AdminScreen() {
     } finally {
       setHomeSectionsLoading(false);
     }
+  };
+
+  const fetchAdminHomeBanners = async () => {
+    console.log('[Admin] Fetching home banners');
+    setHomeBannersLoading(true);
+    const { data, error } = await supabase
+      .from('home_banners')
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (error) console.error('[Admin] Banners fetch error:', error.message);
+    else setAdminHomeBanners((data as HomeBannerRow[]) ?? []);
+    setHomeBannersLoading(false);
   };
 
   const handleMenuToggle = async (row: MenuConfigRow, newValue: boolean) => {
@@ -2399,6 +2569,15 @@ export default function AdminScreen() {
         onSaved={() => fetchAdminHomeSections()}
         item={editingHomeSection}
         nextSortOrder={adminHomeSections.length}
+      />
+
+      {/* Home banner modal */}
+      <HomeBannerModal
+        visible={showHomeBannerModal}
+        onClose={() => { setShowHomeBannerModal(false); setEditingHomeBanner(null); }}
+        onSaved={fetchAdminHomeBanners}
+        item={editingHomeBanner}
+        nextSortOrder={adminHomeBanners.length}
       />
 
       {/* Edit modals */}
@@ -2962,6 +3141,116 @@ export default function AdminScreen() {
           >
             <Plus size={16} color={COLORS.primary} />
             <Text style={styles.addBtnText}>Add Section</Text>
+          </AnimatedPressable>
+        </View>
+
+        {/* ── Banners Management ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Layout size={18} color={COLORS.text} />
+            <Text style={styles.sectionTitle}>Banners</Text>
+            <AnimatedPressable
+              onPress={() => { console.log('[Admin] Refresh banners pressed'); fetchAdminHomeBanners(); }}
+              style={styles.refreshButton}
+            >
+              <RefreshCw size={16} color={COLORS.primary} />
+            </AnimatedPressable>
+          </View>
+
+          {homeBannersLoading ? (
+            <>
+              <ListItemSkeleton />
+              <ListItemSkeleton />
+            </>
+          ) : adminHomeBanners.length === 0 ? (
+            <Text style={styles.emptyText}>No banners yet.</Text>
+          ) : (
+            adminHomeBanners.map((row, idx) => (
+              <View key={row.id}>
+                <View style={styles.menuConfigRow}>
+                  <View style={[styles.menuConfigInfo, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
+                    <Text style={styles.menuConfigLabel} numberOfLines={1}>{row.label}</Text>
+                    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                      {row.menu_tag ? (
+                        <View style={[styles.menuConfigBadge, { backgroundColor: COLORS.primaryMuted }]}>
+                          <Text style={[styles.menuConfigBadgeText, { color: COLORS.primary }]}>{row.menu_tag}</Text>
+                        </View>
+                      ) : null}
+                      <Text style={styles.sectionItemLimit} numberOfLines={1}>{row.redirect_url}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.menuConfigActions}>
+                    <AnimatedPressable
+                      onPress={() => {
+                        console.log('[Admin] Edit banner pressed:', row.label);
+                        setEditingHomeBanner(row);
+                        setShowHomeBannerModal(true);
+                      }}
+                      style={styles.iconBtn}
+                    >
+                      <Pencil size={15} color={COLORS.primary} />
+                    </AnimatedPressable>
+                    <AnimatedPressable
+                      onPress={() => {
+                        console.log('[Admin] Delete banner pressed:', row.label);
+                        Alert.alert(
+                          'Delete Banner',
+                          `Delete "${row.label}"? This cannot be undone.`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: async () => {
+                                console.log('[Admin] Confirming delete banner:', row.id);
+                                const { error } = await supabase.from('home_banners').delete().eq('id', row.id);
+                                if (error) {
+                                  console.error('[Admin] Delete banner error:', error.message);
+                                  Alert.alert('Error', error.message);
+                                  return;
+                                }
+                                console.log('[Admin] Banner deleted:', row.label);
+                                fetchAdminHomeBanners();
+                              },
+                            },
+                          ]
+                        );
+                      }}
+                      style={[styles.iconBtn, styles.iconBtnDanger]}
+                    >
+                      <Trash2 size={15} color={COLORS.danger} />
+                    </AnimatedPressable>
+                    <Switch
+                      value={row.is_enabled}
+                      onValueChange={async (v) => {
+                        console.log('[Admin] Banner toggle:', row.label, '→', v);
+                        setAdminHomeBanners((prev) => prev.map((r) => r.id === row.id ? { ...r, is_enabled: v } : r));
+                        const { error } = await supabase.from('home_banners').update({ is_enabled: v }).eq('id', row.id);
+                        if (error) {
+                          console.error('[Admin] Banner toggle error:', error.message);
+                          setAdminHomeBanners((prev) => prev.map((r) => r.id === row.id ? { ...r, is_enabled: !v } : r));
+                        }
+                      }}
+                      trackColor={{ false: COLORS.border, true: COLORS.primary }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </View>
+                </View>
+                {idx < adminHomeBanners.length - 1 && <View style={styles.separator} />}
+              </View>
+            ))
+          )}
+
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[Admin] Add banner pressed');
+              setEditingHomeBanner(null);
+              setShowHomeBannerModal(true);
+            }}
+            style={[styles.addBtn, { marginTop: 12, marginBottom: 0 }]}
+          >
+            <Plus size={16} color={COLORS.primary} />
+            <Text style={styles.addBtnText}>Add Banner</Text>
           </AnimatedPressable>
         </View>
 
