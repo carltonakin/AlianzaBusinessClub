@@ -70,8 +70,9 @@ async function registerPushToken(userId: string) {
 
     console.log('[Notifications] Getting Expo push token');
     const isExpoGo = Constants.appOwnership === 'expo';
+    const projectId = process.env.EAS_PROJECT_ID;
     const tokenData = await Notifications.getExpoPushTokenAsync(
-      isExpoGo ? {} : { projectId: '2b5bc1c7-549b-42ce-8eae-c706e5cf84f4' }
+      isExpoGo || !projectId ? {} : { projectId }
     );
     const token = tokenData.data;
     console.log('[Notifications] Push token obtained:', token);
