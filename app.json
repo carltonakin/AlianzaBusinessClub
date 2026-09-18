@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.alianzaempresarial.nexushub",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleDisplayName": "AB Club"
+        "CFBundleDisplayName": "AB Club",
+        "NSUserNotificationUsageDescription": "AB Club sends you notifications about events, news, and updates from the community."
       }
     },
     "android": {
@@ -36,7 +37,13 @@
       "expo-router",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-notifications",
+        {
+          "iosDisplayInForeground": true
+        }
+      ]
     ],
     "scheme": "nexushub",
     "experiments": {
