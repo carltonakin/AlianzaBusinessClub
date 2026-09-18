@@ -10,13 +10,19 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Image,
+  Dimensions,
+  FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
+import { Mail, Lock, User, Eye, EyeOff, Globe } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -28,6 +34,14 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [banners, setBanners] = useState<{
+    id: string;
+    label: string;
+    cover_image_url: string | null;
+    redirect_url: string;
+    open_in_app: boolean;
+    menu_tag: string | null;
+  }[]>([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -38,6 +52,21 @@ export default function SignUpScreen() {
       Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
     ]).start();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    console.log('[SignUp] Fetching home_banners');
+    supabase
+      .from('home_banners')
+      .select('id, label, cover_image_url, redirect_url, open_in_app, menu_tag')
+      .eq('is_enabled', true)
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => {
+        if (data) {
+          console.log('[SignUp] Fetched', data.length, 'banners');
+          setBanners(data as any);
+        }
+      });
   }, []);
 
   const handleSignUp = async () => {
@@ -91,6 +120,8 @@ export default function SignUpScreen() {
     console.log('[SignUp] Navigate to sign in pressed');
     router.back();
   };
+
+  const bannerCardWidth = (screenWidth - 48 - 24) / 2;
 
   return (
     <KeyboardAvoidingView
@@ -197,6 +228,48 @@ export default function SignUpScreen() {
 
             {/* Explore section */}
             <Text style={styles.exploreTitle}>Explore Online With Us Now.</Text>
+
+            {/* Banners */}
+            {banners.length > 0 ? (
+              <View style={styles.bannersWrap}>
+                <FlatList
+                  data={banners}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id}
+                  snapToInterval={bannerCardWidth + 12}
+                  decelerationRate="fast"
+                  contentContainerStyle={{ gap: 12 }}
+                  renderItem={({ item }) => (
+                    <View style={[styles.bannerCard, { width: bannerCardWidth }]}>
+                      {item.cover_image_url ? (
+                        <Image
+                          source={{ uri: item.cover_image_url }}
+                          style={StyleSheet.absoluteFillObject}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <LinearGradient
+                          colors={[COLORS.primary, COLORS.primaryDark]}
+                          style={StyleSheet.absoluteFillObject}
+                        />
+                      )}
+                      <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.65)']}
+                        style={[StyleSheet.absoluteFillObject, { justifyContent: 'flex-end', padding: 10 }]}
+                      >
+                        {item.menu_tag ? (
+                          <View style={styles.bannerTag}>
+                            <Text style={styles.bannerTagText}>{item.menu_tag}</Text>
+                          </View>
+                        ) : null}
+                        <Text style={styles.bannerLabel} numberOfLines={2}>{item.label}</Text>
+                      </LinearGradient>
+                    </View>
+                  )}
+                />
+              </View>
+            ) : null}
 
             <AnimatedPressable
               onPress={handleSignUp}
@@ -334,6 +407,36 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 16,
     marginTop: 8,
+  },
+  bannersWrap: {
+    marginBottom: 20,
+    marginHorizontal: -4,
+  },
+  bannerCard: {
+    height: 120,
+    borderRadius: 14,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: COLORS.surfaceSecondary,
+  },
+  bannerTag: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  bannerTagText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  bannerLabel: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'Outfit_700Bold',
+    lineHeight: 16,
   },
   createButton: {
     backgroundColor: COLORS.primary,

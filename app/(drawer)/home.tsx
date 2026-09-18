@@ -649,7 +649,7 @@ export default function HomeScreen() {
                 <Text style={styles.heroGreeting}>Welcome back,</Text>
                 <Text style={styles.heroName}>{displayName}</Text>
               </View>
-              <MembershipBadge tier={profile?.membership_tier || 'free'} size="sm" />
+
             </View>
             <Text style={styles.heroSubtitle}>
               {'Welcome to Alianza Business Club.'}

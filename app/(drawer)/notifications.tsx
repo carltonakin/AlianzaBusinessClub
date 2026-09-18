@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Linking, Pressable } from 'react-native';
 import { Bell } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
@@ -56,6 +56,17 @@ function getRelativeTime(dateStr: string): string {
 export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<PushNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    console.log('[Notifications] Toggle expand for id:', id);
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -94,17 +105,29 @@ export default function NotificationsScreen() {
 
   const renderItem = ({ item }: { item: PushNotification }) => {
     const relativeTime = getRelativeTime(item.sent_at);
+    const isExpanded = expandedIds.has(item.id);
+    const titleLines = isExpanded ? undefined : 1;
+    const bodyLines = isExpanded ? undefined : 2;
+    const chevron = isExpanded ? '▲' : '▼';
     return (
-      <View style={styles.card}>
+      <Pressable
+        onPress={() => toggleExpand(item.id)}
+        style={[styles.card, isExpanded && styles.cardExpanded]}
+      >
         <View style={styles.iconCircle}>
           <Bell size={16} color={COLORS.primary} />
         </View>
         <View style={styles.cardBody}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardBody2}>{renderBodyWithLinks(item.body)}</Text>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle} numberOfLines={titleLines}>{item.title}</Text>
+            <Text style={styles.expandChevron}>{chevron}</Text>
+          </View>
+          <Text style={styles.cardBody2} numberOfLines={bodyLines}>
+            {renderBodyWithLinks(item.body)}
+          </Text>
           <Text style={styles.cardTime}>{relativeTime}</Text>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -165,6 +188,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     gap: 12,
   },
+  cardExpanded: {
+    borderColor: COLORS.primary,
+  },
   iconCircle: {
     width: 36,
     height: 36,
@@ -178,10 +204,23 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 3,
   },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 2,
+  },
   cardTitle: {
     fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
     color: COLORS.text,
+    flex: 1,
+  },
+  expandChevron: {
+    fontSize: 10,
+    color: COLORS.textTertiary,
+    flexShrink: 0,
   },
   cardBody2: {
     fontSize: 13,
