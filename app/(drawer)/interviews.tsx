@@ -27,14 +27,12 @@ function resolveImageSource(source: string | number | ImageSourcePropType | null
 
 export default function InterviewsScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
+  useAuth();
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const isPaid = profile?.membership_tier === 'paid';
-  const isAdmin = profile?.role === 'admin';
-  const hasAccess = isPaid || isAdmin;
+  const hasAccess = true;
 
   useEffect(() => {
     if (hasAccess) fetchInterviews();

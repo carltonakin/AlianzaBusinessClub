@@ -2805,7 +2805,7 @@ export default function AdminScreen() {
             </Text>
           ) : (
             menuConfig.map((row, idx) => {
-              const badgeText = row.requires_paid ? 'Members Only' : 'Free';
+              const badgeText = row.requires_paid ? 'Restricted' : 'Open';
               const badgeBg = row.requires_paid ? COLORS.accentMuted : COLORS.primaryMuted;
               const badgeColor = row.requires_paid ? COLORS.accent : COLORS.primary;
               return (

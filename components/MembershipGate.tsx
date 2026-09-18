@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Lock } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { COLORS } from '@/constants/Colors';
@@ -12,15 +12,6 @@ interface MembershipGateProps {
 export function MembershipGate({ featureName = 'this content' }: MembershipGateProps) {
   const router = useRouter();
 
-  const handleUpgrade = () => {
-    console.log('[MembershipGate] Upgrade button pressed');
-    Alert.alert(
-      'Upgrade Membership',
-      'Contact us to upgrade your membership and unlock all premium content.',
-      [{ text: 'OK' }]
-    );
-  };
-
   const handleGoBack = () => {
     console.log('[MembershipGate] Go back pressed');
     router.back();
@@ -29,15 +20,12 @@ export function MembershipGate({ featureName = 'this content' }: MembershipGateP
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        <Lock size={40} color={COLORS.accent} />
+        <Lock size={40} color={COLORS.primary} />
       </View>
-      <Text style={styles.title}>Upgrade to Paid Membership</Text>
+      <Text style={styles.title}>Members Only</Text>
       <Text style={styles.description}>
-        Unlock {featureName} and get access to exclusive Training, Interviews, Webinars, and Community features.
+        Access to {featureName} is restricted. Please contact support if you believe this is an error.
       </Text>
-      <AnimatedPressable onPress={handleUpgrade} style={styles.upgradeButton}>
-        <Text style={styles.upgradeButtonText}>Upgrade Now</Text>
-      </AnimatedPressable>
       <AnimatedPressable onPress={handleGoBack} style={styles.backButton}>
         <Text style={styles.backButtonText}>Go Back</Text>
       </AnimatedPressable>
@@ -57,7 +45,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: COLORS.accentMuted,
+    backgroundColor: COLORS.primaryMuted,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -76,20 +64,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 32,
-  },
-  upgradeButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    marginBottom: 12,
-    width: '100%',
-    alignItems: 'center',
-  },
-  upgradeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'Outfit_600SemiBold',
   },
   backButton: {
     borderRadius: 14,

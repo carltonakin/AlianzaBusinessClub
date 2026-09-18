@@ -10,7 +10,6 @@ import {
   Image,
   ImageSourcePropType,
   Dimensions,
-  Alert,
   Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -37,7 +36,6 @@ import {
   Link,
   Map,
   Phone,
-  Lock,
   MapPin,
   Wifi,
 } from 'lucide-react-native';
@@ -136,7 +134,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const { profile } = useAuth();
 
-  const isPaid = profile?.membership_tier === 'paid';
   const initials = getInitials(profile?.full_name, profile?.email);
   const displayName = profile?.full_name || 'Member';
 
@@ -330,11 +327,6 @@ export default function HomeScreen() {
 
   const handleQuickAccessPress = (item: QuickAccessRow) => {
     console.log('[Home] Quick access pressed:', item.label, 'link_type:', item.link_type);
-    if (item.requires_paid && !isPaid) {
-      console.log('[Home] Quick access locked — upgrade required:', item.label);
-      Alert.alert('Members Only', 'Upgrade to access this feature.');
-      return;
-    }
     if (item.link_type === 'internal' && item.route) {
       router.push(item.route as any);
     } else if (item.link_type === 'external') {
@@ -463,22 +455,16 @@ export default function HomeScreen() {
   );
 
   const renderQuickAccessItem = ({ item }: { item: QuickAccessRow }) => {
-    const isLocked = item.requires_paid && !isPaid;
-    const iconColor = isLocked ? COLORS.textTertiary : COLORS.primary;
+    const iconColor = COLORS.primary;
     return (
       <AnimatedPressable
         onPress={() => handleQuickAccessPress(item)}
         style={[styles.gridItem, { width: GRID_ITEM_WIDTH }]}
       >
-        <View style={[styles.gridIcon, isLocked && styles.gridIconLocked]}>
+        <View style={styles.gridIcon}>
           {getIcon(item.icon_name, iconColor, 18)}
-          {isLocked ? (
-            <View style={styles.lockOverlay}>
-              <Lock size={9} color={COLORS.textTertiary} />
-            </View>
-          ) : null}
         </View>
-        <Text style={[styles.gridLabel, isLocked && styles.gridLabelLocked]} numberOfLines={1}>
+        <Text style={styles.gridLabel} numberOfLines={1}>
           {item.label}
         </Text>
       </AnimatedPressable>
@@ -486,7 +472,6 @@ export default function HomeScreen() {
   };
 
   const renderExternalSection = (section: HomeSectionRow) => {
-    const isLocked = section.requires_paid && !isPaid;
     const hasImage = !!section.preview_image_url;
 
     const handlePress = () => {
@@ -507,13 +492,7 @@ export default function HomeScreen() {
             <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>{section.title}</Text>
           </View>
         </View>
-        {isLocked ? (
-          <View style={styles.lockedSectionCard}>
-            <Lock size={22} color={COLORS.textTertiary} />
-            <Text style={styles.lockedSectionText}>Upgrade to unlock</Text>
-          </View>
-        ) : (
-          <AnimatedPressable onPress={handlePress} style={styles.contentCard}>
+        <AnimatedPressable onPress={handlePress} style={styles.contentCard}>
             {hasImage ? (
               <Image source={resolveImageSource(section.preview_image_url)} style={styles.contentCardImage} resizeMode="cover" />
             ) : (
@@ -536,7 +515,6 @@ export default function HomeScreen() {
               </Text>
             </View>
           </AnimatedPressable>
-        )}
       </View>
     );
   };
@@ -546,7 +524,6 @@ export default function HomeScreen() {
       return renderExternalSection(section);
     }
 
-    const isLocked = section.requires_paid && !isPaid;
     const items = sectionContent[section.id] ?? [];
     const seeAllRoute = SECTION_ROUTES[section.content_type] ?? '/(drawer)/home';
 
@@ -565,12 +542,7 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {isLocked ? (
-          <View style={styles.lockedSectionCard}>
-            <Lock size={22} color={COLORS.textTertiary} />
-            <Text style={styles.lockedSectionText}>Upgrade to unlock</Text>
-          </View>
-        ) : sectionsLoading ? (
+        {sectionsLoading ? (
           section.content_type === 'events' ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -680,9 +652,7 @@ export default function HomeScreen() {
               <MembershipBadge tier={profile?.membership_tier || 'free'} size="sm" />
             </View>
             <Text style={styles.heroSubtitle}>
-              {isPaid
-                ? 'You have full access to all content.'
-                : 'Upgrade to unlock all premium content.'}
+              {'Welcome to Alianza Business Club.'}
             </Text>
           </LinearGradient>
         </Animated.View>
@@ -842,45 +812,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  gridIconLocked: {
-    backgroundColor: COLORS.surfaceSecondary,
-  },
   gridLabel: {
     fontSize: 10,
     fontFamily: 'Outfit_500Medium',
     color: COLORS.text,
     textAlign: 'center',
   },
-  gridLabelLocked: {
-    color: COLORS.textTertiary,
-  },
   gridPlaceholder: {
     height: 80,
     backgroundColor: COLORS.surfaceSecondary,
     borderRadius: 12,
-  },
-  lockOverlay: {
-    position: 'absolute',
-    bottom: 3,
-    right: 3,
-  },
-  // Locked section
-  lockedSectionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: COLORS.surfaceSecondary,
-    borderRadius: 14,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    justifyContent: 'center',
-  },
-  lockedSectionText: {
-    fontSize: 14,
-    fontFamily: 'Outfit_500Medium',
-    color: COLORS.textTertiary,
   },
   // Event cards
   eventCard: {

@@ -23,7 +23,6 @@ import {
   User,
   Shield,
   LogOut,
-  Lock,
   ExternalLink,
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
@@ -105,7 +104,6 @@ export function DrawerContent(props: any) {
   const insets = useSafeAreaInsets();
   const { profile, signOut } = useAuth();
 
-  const isPaid = profile?.membership_tier === 'paid';
   const isAdmin = profile?.role === 'admin';
 
   const [menuConfig, setMenuConfig] = useState<MenuConfigRow[] | null>(null);
@@ -250,7 +248,6 @@ export function DrawerContent(props: any) {
 
   const renderNavItem = (item: NavItem) => {
     const active = isActive(item.route);
-    const locked = item.requiresPaid && !isPaid && !isAdmin;
 
     return (
       <AnimatedPressable
@@ -264,9 +261,6 @@ export function DrawerContent(props: any) {
         <Text style={[styles.navLabel, active && styles.navLabelActive]}>
           {item.label}
         </Text>
-        {locked ? (
-          <Lock size={14} color={COLORS.textTertiary} />
-        ) : null}
       </AnimatedPressable>
     );
   };
@@ -292,19 +286,11 @@ export function DrawerContent(props: any) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
       >
-        {/* Free items */}
+        {/* Nav items */}
         <View style={styles.section}>
           {freeItems.map(renderNavItem)}
         </View>
 
-        {/* Members Only divider */}
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerLabel}>MEMBERS ONLY</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Paid items */}
         <View style={styles.section}>
           {paidItems.map(renderNavItem)}
         </View>
@@ -422,24 +408,6 @@ const styles = StyleSheet.create({
   navLabelActive: {
     color: COLORS.primary,
     fontFamily: 'Outfit_600SemiBold',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginVertical: 8,
-    gap: 8,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.divider,
-  },
-  dividerLabel: {
-    fontSize: 10,
-    fontFamily: 'Outfit_600SemiBold',
-    color: COLORS.textTertiary,
-    letterSpacing: 1,
   },
   simpleDivider: {
     height: 1,

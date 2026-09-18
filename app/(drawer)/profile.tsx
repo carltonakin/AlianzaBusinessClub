@@ -70,15 +70,6 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const handleUpgrade = () => {
-    console.log('[Profile] Upgrade membership pressed');
-    Alert.alert(
-      'Upgrade Membership',
-      'Contact us to upgrade your membership and unlock all premium content.',
-      [{ text: 'OK' }]
-    );
-  };
-
   const handleShareMembershipNumber = async () => {
     const membershipNumber = (profile as any)?.membership_number;
     if (!membershipNumber) return;
@@ -234,15 +225,13 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Membership</Text>
           <View style={styles.membershipCard}>
             <View style={styles.membershipRow}>
-              <Shield size={20} color={profile?.membership_tier === 'paid' ? COLORS.paid : COLORS.free} />
+              <Shield size={20} color={COLORS.paid} />
               <View style={styles.membershipInfo}>
                 <Text style={styles.membershipTierLabel}>
-                  {profile?.membership_tier === 'paid' ? 'Paid Member' : 'Free Member'}
+                  {'Active Member'}
                 </Text>
                 <Text style={styles.membershipDesc}>
-                  {profile?.membership_tier === 'paid'
-                    ? 'Full access to all content'
-                    : 'Limited access — upgrade for more'}
+                  {'Full access to all content'}
                 </Text>
               </View>
               <MembershipBadge tier={profile?.membership_tier || 'free'} size="sm" />
@@ -270,11 +259,7 @@ export default function ProfileScreen() {
               <Text style={styles.validateButtonText}>Validate Member</Text>
             </AnimatedPressable>
 
-            {profile?.membership_tier === 'free' ? (
-              <AnimatedPressable onPress={handleUpgrade} style={styles.upgradeButton}>
-                <Text style={styles.upgradeButtonText}>Upgrade to Paid</Text>
-              </AnimatedPressable>
-            ) : null}
+
           </View>
         </View>
 
@@ -444,17 +429,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_400Regular',
     color: COLORS.textSecondary,
     marginTop: 2,
-  },
-  upgradeButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  upgradeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: 'Outfit_600SemiBold',
   },
   membershipNumberCard: {
     backgroundColor: COLORS.surfaceSecondary,
