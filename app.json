@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Nexus Hub",
-    "slug": "nexus-hub",
+    "slug": "nexus-hub-app-mfwyzi",
     "owner": "alianzaempresarial",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.placeholder.app",
+      "bundleIdentifier": "com.alianzaempresarial.nexushub",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -24,7 +24,7 @@
         "foregroundImage": "./assets/images/app-icon-pcy.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.placeholder.app"
+      "package": "com.alianzaempresarial.nexushub"
     },
     "web": {
       "favicon": "./assets/images/newly.png",

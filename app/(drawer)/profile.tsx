@@ -8,7 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { User, Mail, Shield, LogOut, Edit3, Save } from 'lucide-react-native';
+import { User, Mail, Shield, LogOut, Edit3, Save, Trash2 } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,6 +75,49 @@ export default function ProfileScreen() {
       'Upgrade Membership',
       'Contact us to upgrade your membership and unlock all premium content.',
       [{ text: 'OK' }]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all associated data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Are you absolutely sure?',
+              'Type "DELETE" to confirm — your account will be permanently removed.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Yes, Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      if (!profile?.id) return;
+                      const { error } = await supabase.rpc('delete_user_account');
+                      if (error) {
+                        Alert.alert('Error', 'Failed to delete account. Please contact support.');
+                        console.error('[Profile] Delete account error:', error.message);
+                        return;
+                      }
+                      await signOut();
+                      router.replace('/(auth)/sign-in');
+                    } catch (err) {
+                      console.error('[Profile] Delete account unexpected error:', err);
+                      Alert.alert('Error', 'Something went wrong. Please try again.');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
     );
   };
 
@@ -198,6 +241,10 @@ export default function ProfileScreen() {
           <AnimatedPressable onPress={handleSignOut} style={styles.signOutButton}>
             <LogOut size={18} color={COLORS.danger} />
             <Text style={styles.signOutText}>Sign Out</Text>
+          </AnimatedPressable>
+          <AnimatedPressable onPress={handleDeleteAccount} style={styles.deleteButton}>
+            <Trash2 size={18} color={COLORS.danger} />
+            <Text style={styles.deleteButtonText}>Delete Account</Text>
           </AnimatedPressable>
         </View>
       </ScrollView>
@@ -378,6 +425,23 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239,68,68,0.15)',
   },
   signOutText: {
+    fontSize: 15,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.danger,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(239,68,68,0.05)',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.12)',
+    marginTop: 10,
+  },
+  deleteButtonText: {
     fontSize: 15,
     fontFamily: 'Outfit_600SemiBold',
     color: COLORS.danger,
