@@ -25,6 +25,7 @@ export default function DrawerLayout() {
       <Drawer.Screen name="admin" />
       <Drawer.Screen name="webview" />
       <Drawer.Screen name="notifications" />
+      <Drawer.Screen name="validate-member" />
     </Drawer>
   );
 }

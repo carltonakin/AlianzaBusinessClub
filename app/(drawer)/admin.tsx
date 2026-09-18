@@ -74,6 +74,22 @@ import {
   Pencil,
   Menu,
   ExternalLink,
+  Grid,
+  Layout,
+  Star,
+  Globe,
+  FileText,
+  Home as HomeIcon,
+  Settings,
+  Heart,
+  Zap,
+  Award,
+  Briefcase,
+  Link as LinkIcon,
+  Map,
+  Phone,
+  ShoppingBag,
+  GraduationCap,
 } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
@@ -117,6 +133,29 @@ interface MenuConfigRow {
   sort_order: number;
   external_url: string | null;
   open_in_app: boolean;
+}
+
+interface QuickAccessRow {
+  id: string;
+  label: string;
+  icon_name: string;
+  link_type: 'internal' | 'external';
+  route: string | null;
+  external_url: string | null;
+  open_in_app: boolean;
+  requires_paid: boolean;
+  sort_order: number;
+  is_enabled: boolean;
+}
+
+interface HomeSectionRow {
+  id: string;
+  title: string;
+  content_type: 'events' | 'training' | 'interviews' | 'webinars';
+  item_limit: number;
+  sort_order: number;
+  is_enabled: boolean;
+  requires_paid: boolean;
 }
 
 // ─── Add-item form state shapes ───────────────────────────────────────────────
@@ -1301,6 +1340,376 @@ function MenuItemModal({
   );
 }
 
+// ─── QuickAccessModal ─────────────────────────────────────────────────────────
+
+const ICON_NAMES = [
+  'BookOpen', 'Calendar', 'ShoppingBag', 'GraduationCap', 'Users',
+  'Star', 'Globe', 'Bell', 'Video', 'Mic',
+  'FileText', 'Home', 'Settings', 'Heart', 'Zap',
+  'Award', 'Briefcase', 'Link', 'Map', 'Phone',
+];
+
+const CONTENT_TYPES: { label: string; value: HomeSectionRow['content_type'] }[] = [
+  { label: 'Events', value: 'events' },
+  { label: 'Training', value: 'training' },
+  { label: 'Interviews', value: 'interviews' },
+  { label: 'Webinars', value: 'webinars' },
+];
+
+function QuickAccessModal({
+  visible,
+  onClose,
+  onSaved,
+  item,
+  nextSortOrder,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  item: QuickAccessRow | null;
+  nextSortOrder: number;
+}) {
+  const isEdit = item !== null;
+  const [label, setLabel] = useState('');
+  const [iconName, setIconName] = useState('Star');
+  const [linkType, setLinkType] = useState<'internal' | 'external'>('internal');
+  const [selectedRoute, setSelectedRoute] = useState('/(drawer)/home');
+  const [externalUrl, setExternalUrl] = useState('');
+  const [openInApp, setOpenInApp] = useState(false);
+  const [requiresPaid, setRequiresPaid] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      if (item) {
+        setLabel(item.label);
+        setIconName(item.icon_name || 'Star');
+        setLinkType(item.link_type);
+        setSelectedRoute(item.route ?? '/(drawer)/home');
+        setExternalUrl(item.external_url ?? '');
+        setOpenInApp(item.open_in_app);
+        setRequiresPaid(item.requires_paid);
+        setIsEnabled(item.is_enabled);
+      } else {
+        setLabel('');
+        setIconName('Star');
+        setLinkType('internal');
+        setSelectedRoute('/(drawer)/home');
+        setExternalUrl('');
+        setOpenInApp(false);
+        setRequiresPaid(false);
+        setIsEnabled(true);
+      }
+    }
+  }, [visible, item]);
+
+  const handleSave = async () => {
+    if (!label.trim()) {
+      Alert.alert('Validation', 'Label is required.');
+      return;
+    }
+    if (linkType === 'external' && !externalUrl.trim().startsWith('http')) {
+      Alert.alert('Validation', 'External URL must start with "http".');
+      return;
+    }
+    console.log('[Admin] Saving quick access button:', label, 'mode:', isEdit ? 'edit' : 'add');
+    setSaving(true);
+    const payload = {
+      label: label.trim(),
+      icon_name: iconName,
+      link_type: linkType,
+      route: linkType === 'internal' ? selectedRoute : null,
+      external_url: linkType === 'external' ? externalUrl.trim() : null,
+      open_in_app: linkType === 'external' ? openInApp : false,
+      requires_paid: requiresPaid,
+      is_enabled: isEnabled,
+    };
+    let error: any = null;
+    if (isEdit && item) {
+      const result = await supabase.from('home_quick_access').update(payload).eq('id', item.id);
+      error = result.error;
+    } else {
+      const result = await supabase.from('home_quick_access').insert({ ...payload, sort_order: nextSortOrder });
+      error = result.error;
+    }
+    setSaving(false);
+    if (error) {
+      console.error('[Admin] Error saving quick access button:', error.message);
+      Alert.alert('Error', error.message);
+      return;
+    }
+    console.log('[Admin] Quick access button saved successfully');
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={modalStyles.container}>
+        <View style={modalStyles.header}>
+          <Text style={modalStyles.title}>{isEdit ? 'Edit Button' : 'Add Button'}</Text>
+          <AnimatedPressable onPress={onClose} style={modalStyles.closeBtn}>
+            <X size={20} color={COLORS.text} />
+          </AnimatedPressable>
+        </View>
+        <ScrollView style={modalStyles.body} showsVerticalScrollIndicator={false}>
+          <FormInput label="Label *" value={label} onChangeText={setLabel} placeholder="Button label" />
+
+          {/* Icon picker */}
+          <View style={formStyles.inputGroup}>
+            <Text style={formStyles.inputLabel}>Icon</Text>
+            <View style={menuItemModalStyles.pillsWrap}>
+              {ICON_NAMES.map((name) => {
+                const isSelected = iconName === name;
+                return (
+                  <AnimatedPressable
+                    key={name}
+                    onPress={() => {
+                      console.log('[Admin] Quick access icon selected:', name);
+                      setIconName(name);
+                    }}
+                    style={[menuItemModalStyles.pill, isSelected && menuItemModalStyles.pillActive]}
+                  >
+                    <Text style={[menuItemModalStyles.pillText, isSelected && menuItemModalStyles.pillTextActive]}>
+                      {name}
+                    </Text>
+                  </AnimatedPressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Link Type */}
+          <View style={formStyles.inputGroup}>
+            <Text style={formStyles.inputLabel}>Link Type</Text>
+            <View style={menuItemModalStyles.toggleRow}>
+              <AnimatedPressable
+                onPress={() => { console.log('[Admin] QA link type → internal'); setLinkType('internal'); }}
+                style={[menuItemModalStyles.toggleBtn, linkType === 'internal' && menuItemModalStyles.toggleBtnActive]}
+              >
+                <Text style={[menuItemModalStyles.toggleBtnText, linkType === 'internal' && menuItemModalStyles.toggleBtnTextActive]}>
+                  Internal
+                </Text>
+              </AnimatedPressable>
+              <AnimatedPressable
+                onPress={() => { console.log('[Admin] QA link type → external'); setLinkType('external'); }}
+                style={[menuItemModalStyles.toggleBtn, linkType === 'external' && menuItemModalStyles.toggleBtnActive]}
+              >
+                <Text style={[menuItemModalStyles.toggleBtnText, linkType === 'external' && menuItemModalStyles.toggleBtnTextActive]}>
+                  External URL
+                </Text>
+              </AnimatedPressable>
+            </View>
+          </View>
+
+          {linkType === 'internal' && (
+            <View style={formStyles.inputGroup}>
+              <Text style={formStyles.inputLabel}>Screen</Text>
+              <View style={menuItemModalStyles.pillsWrap}>
+                {INTERNAL_ROUTES.map((r) => {
+                  const isSelected = selectedRoute === r.route;
+                  return (
+                    <AnimatedPressable
+                      key={r.route}
+                      onPress={() => { console.log('[Admin] QA route selected:', r.route); setSelectedRoute(r.route); }}
+                      style={[menuItemModalStyles.pill, isSelected && menuItemModalStyles.pillActive]}
+                    >
+                      <Text style={[menuItemModalStyles.pillText, isSelected && menuItemModalStyles.pillTextActive]}>
+                        {r.label}
+                      </Text>
+                    </AnimatedPressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {linkType === 'external' && (
+            <>
+              <View style={formStyles.inputGroup}>
+                <Text style={formStyles.inputLabel}>URL</Text>
+                <TextInput
+                  style={formStyles.textInput}
+                  value={externalUrl}
+                  onChangeText={setExternalUrl}
+                  placeholder="https://"
+                  placeholderTextColor={COLORS.textTertiary}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                />
+              </View>
+              <SwitchRow
+                label="Open inside app"
+                value={openInApp}
+                onValueChange={(v) => { console.log('[Admin] QA open_in_app →', v); setOpenInApp(v); }}
+              />
+            </>
+          )}
+
+          <SwitchRow label="Members Only" value={requiresPaid} onValueChange={(v) => { console.log('[Admin] QA requires_paid →', v); setRequiresPaid(v); }} />
+          <SwitchRow label="Enabled" value={isEnabled} onValueChange={(v) => { console.log('[Admin] QA is_enabled →', v); setIsEnabled(v); }} />
+        </ScrollView>
+        <View style={modalStyles.footer}>
+          <AnimatedPressable
+            onPress={handleSave}
+            disabled={saving}
+            style={[modalStyles.saveBtn, saving && modalStyles.saveBtnDisabled]}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={modalStyles.saveBtnText}>{isEdit ? 'Save Changes' : 'Add Button'}</Text>
+            )}
+          </AnimatedPressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── HomeSectionModal ─────────────────────────────────────────────────────────
+
+function HomeSectionModal({
+  visible,
+  onClose,
+  onSaved,
+  item,
+  nextSortOrder,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  item: HomeSectionRow | null;
+  nextSortOrder: number;
+}) {
+  const isEdit = item !== null;
+  const [title, setTitle] = useState('');
+  const [contentType, setContentType] = useState<HomeSectionRow['content_type']>('events');
+  const [itemLimit, setItemLimit] = useState('5');
+  const [requiresPaid, setRequiresPaid] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      if (item) {
+        setTitle(item.title);
+        setContentType(item.content_type);
+        setItemLimit(String(item.item_limit));
+        setRequiresPaid(item.requires_paid);
+        setIsEnabled(item.is_enabled);
+      } else {
+        setTitle('');
+        setContentType('events');
+        setItemLimit('5');
+        setRequiresPaid(false);
+        setIsEnabled(true);
+      }
+    }
+  }, [visible, item]);
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      Alert.alert('Validation', 'Title is required.');
+      return;
+    }
+    const limit = Math.min(10, Math.max(1, parseInt(itemLimit, 10) || 5));
+    console.log('[Admin] Saving home section:', title, 'mode:', isEdit ? 'edit' : 'add');
+    setSaving(true);
+    const payload = {
+      title: title.trim(),
+      content_type: contentType,
+      item_limit: limit,
+      requires_paid: requiresPaid,
+      is_enabled: isEnabled,
+    };
+    let error: any = null;
+    if (isEdit && item) {
+      const result = await supabase.from('home_sections').update(payload).eq('id', item.id);
+      error = result.error;
+    } else {
+      const result = await supabase.from('home_sections').insert({ ...payload, sort_order: nextSortOrder });
+      error = result.error;
+    }
+    setSaving(false);
+    if (error) {
+      console.error('[Admin] Error saving home section:', error.message);
+      Alert.alert('Error', error.message);
+      return;
+    }
+    console.log('[Admin] Home section saved successfully');
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={modalStyles.container}>
+        <View style={modalStyles.header}>
+          <Text style={modalStyles.title}>{isEdit ? 'Edit Section' : 'Add Section'}</Text>
+          <AnimatedPressable onPress={onClose} style={modalStyles.closeBtn}>
+            <X size={20} color={COLORS.text} />
+          </AnimatedPressable>
+        </View>
+        <ScrollView style={modalStyles.body} showsVerticalScrollIndicator={false}>
+          <FormInput label="Title *" value={title} onChangeText={setTitle} placeholder="Section title" />
+
+          {/* Content Type */}
+          <View style={formStyles.inputGroup}>
+            <Text style={formStyles.inputLabel}>Content Type</Text>
+            <View style={menuItemModalStyles.pillsWrap}>
+              {CONTENT_TYPES.map((ct) => {
+                const isSelected = contentType === ct.value;
+                return (
+                  <AnimatedPressable
+                    key={ct.value}
+                    onPress={() => { console.log('[Admin] Section content type selected:', ct.value); setContentType(ct.value); }}
+                    style={[menuItemModalStyles.pill, isSelected && menuItemModalStyles.pillActive]}
+                  >
+                    <Text style={[menuItemModalStyles.pillText, isSelected && menuItemModalStyles.pillTextActive]}>
+                      {ct.label}
+                    </Text>
+                  </AnimatedPressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Item Limit */}
+          <View style={formStyles.inputGroup}>
+            <Text style={formStyles.inputLabel}>Item Limit (1–10)</Text>
+            <TextInput
+              style={formStyles.textInput}
+              value={itemLimit}
+              onChangeText={setItemLimit}
+              placeholder="5"
+              placeholderTextColor={COLORS.textTertiary}
+              keyboardType="number-pad"
+            />
+          </View>
+
+          <SwitchRow label="Members Only" value={requiresPaid} onValueChange={(v) => { console.log('[Admin] Section requires_paid →', v); setRequiresPaid(v); }} />
+          <SwitchRow label="Enabled" value={isEnabled} onValueChange={(v) => { console.log('[Admin] Section is_enabled →', v); setIsEnabled(v); }} />
+        </ScrollView>
+        <View style={modalStyles.footer}>
+          <AnimatedPressable
+            onPress={handleSave}
+            disabled={saving}
+            style={[modalStyles.saveBtn, saving && modalStyles.saveBtnDisabled]}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={modalStyles.saveBtnText}>{isEdit ? 'Save Changes' : 'Add Section'}</Text>
+            )}
+          </AnimatedPressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Content list rows ────────────────────────────────────────────────────────
 
 function ContentRow({
@@ -1442,15 +1851,52 @@ export default function AdminScreen() {
   const [showMenuItemModal, setShowMenuItemModal] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState<MenuConfigRow | null>(null);
 
+  // Quick access management
+  const [quickAccessItems, setQuickAccessItems] = useState<QuickAccessRow[]>([]);
+  const [quickAccessLoading, setQuickAccessLoading] = useState(false);
+  const [showQuickAccessModal, setShowQuickAccessModal] = useState(false);
+  const [editingQuickAccess, setEditingQuickAccess] = useState<QuickAccessRow | null>(null);
+
+  // Home sections management
+  const [adminHomeSections, setAdminHomeSections] = useState<HomeSectionRow[]>([]);
+  const [homeSectionsLoading, setHomeSectionsLoading] = useState(false);
+  const [showHomeSectionModal, setShowHomeSectionModal] = useState(false);
+  const [editingHomeSection, setEditingHomeSection] = useState<HomeSectionRow | null>(null);
+
   const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
-    if (isAdmin) {
-      fetchData();
-      fetchContent('training');
-      fetchMenuConfig();
-    }
-  }, [isAdmin, fetchContent]);
+    if (!isAdmin) return;
+
+    fetchData();
+    fetchContent('training');
+    fetchMenuConfig();
+    fetchQuickAccess();
+    fetchAdminHomeSections();
+
+    // Real-time subscriptions
+    const qaSub = supabase
+      .channel('admin_home_quick_access')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'home_quick_access' }, () => {
+        console.log('[Admin] Real-time: home_quick_access changed');
+        fetchQuickAccess();
+      })
+      .subscribe();
+
+    const hsSub = supabase
+      .channel('admin_home_sections')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'home_sections' }, () => {
+        console.log('[Admin] Real-time: home_sections changed');
+        fetchAdminHomeSections();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(qaSub);
+      supabase.removeChannel(hsSub);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
 
   // ── Fetch core data ──────────────────────────────────────────────────────────
 
@@ -1567,6 +2013,48 @@ export default function AdminScreen() {
       console.error('[Admin] Menu config fetch error:', err);
     } finally {
       setMenuConfigLoading(false);
+    }
+  };
+
+  const fetchQuickAccess = async () => {
+    console.log('[Admin] Fetching quick access items');
+    setQuickAccessLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('home_quick_access')
+        .select('*')
+        .order('sort_order', { ascending: true });
+      if (error) {
+        console.error('[Admin] Quick access fetch error:', error.message);
+      } else {
+        setQuickAccessItems((data as QuickAccessRow[]) ?? []);
+        console.log('[Admin] Quick access items loaded:', data?.length ?? 0);
+      }
+    } catch (err) {
+      console.error('[Admin] Quick access fetch unexpected error:', err);
+    } finally {
+      setQuickAccessLoading(false);
+    }
+  };
+
+  const fetchAdminHomeSections = async () => {
+    console.log('[Admin] Fetching home sections');
+    setHomeSectionsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('home_sections')
+        .select('*')
+        .order('sort_order', { ascending: true });
+      if (error) {
+        console.error('[Admin] Home sections fetch error:', error.message);
+      } else {
+        setAdminHomeSections((data as HomeSectionRow[]) ?? []);
+        console.log('[Admin] Home sections loaded:', data?.length ?? 0);
+      }
+    } catch (err) {
+      console.error('[Admin] Home sections fetch unexpected error:', err);
+    } finally {
+      setHomeSectionsLoading(false);
     }
   };
 
@@ -1688,6 +2176,7 @@ export default function AdminScreen() {
   const renderMember = ({ item }: { item: Profile }) => {
     const initials = getInitials(item.full_name, item.email);
     const displayName = item.full_name || item.email;
+    const membershipNumber = (item as any).membership_number as string | null;
     return (
       <View style={styles.memberRow}>
         <View style={styles.memberAvatar}>
@@ -1696,6 +2185,9 @@ export default function AdminScreen() {
         <View style={styles.memberInfo}>
           <Text style={styles.memberName} numberOfLines={1}>{displayName}</Text>
           <Text style={styles.memberEmail} numberOfLines={1}>{item.email}</Text>
+          {membershipNumber ? (
+            <Text style={styles.memberNumber} numberOfLines={1}>#{membershipNumber}</Text>
+          ) : null}
         </View>
         <View style={styles.memberBadges}>
           <MembershipBadge tier={item.membership_tier} size="sm" />
@@ -1787,6 +2279,24 @@ export default function AdminScreen() {
         onSaved={() => fetchMenuConfig()}
         item={editingMenuItem}
         nextSortOrder={menuConfig.length}
+      />
+
+      {/* Quick access modal */}
+      <QuickAccessModal
+        visible={showQuickAccessModal}
+        onClose={() => { setShowQuickAccessModal(false); setEditingQuickAccess(null); }}
+        onSaved={() => fetchQuickAccess()}
+        item={editingQuickAccess}
+        nextSortOrder={quickAccessItems.length}
+      />
+
+      {/* Home section modal */}
+      <HomeSectionModal
+        visible={showHomeSectionModal}
+        onClose={() => { setShowHomeSectionModal(false); setEditingHomeSection(null); }}
+        onSaved={() => fetchAdminHomeSections()}
+        item={editingHomeSection}
+        nextSortOrder={adminHomeSections.length}
       />
 
       {/* Edit modals */}
@@ -2104,6 +2614,246 @@ export default function AdminScreen() {
           </Text>
         </View>
 
+        {/* ── Quick Access Management ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Grid size={18} color={COLORS.text} />
+            <Text style={styles.sectionTitle}>Quick Access Buttons</Text>
+            <Text style={styles.qaCount}>{quickAccessItems.length} / 25</Text>
+            <AnimatedPressable
+              onPress={() => { console.log('[Admin] Refresh quick access pressed'); fetchQuickAccess(); }}
+              style={styles.refreshButton}
+            >
+              <RefreshCw size={16} color={COLORS.primary} />
+            </AnimatedPressable>
+          </View>
+
+          {quickAccessLoading ? (
+            <>
+              <ListItemSkeleton />
+              <ListItemSkeleton />
+            </>
+          ) : quickAccessItems.length === 0 ? (
+            <Text style={styles.emptyText}>No quick access buttons yet.</Text>
+          ) : (
+            quickAccessItems.map((row, idx) => {
+              const badgeText = row.link_type === 'external' ? 'External' : 'Internal';
+              const badgeBg = row.link_type === 'external' ? COLORS.accentMuted : COLORS.primaryMuted;
+              const badgeColor = row.link_type === 'external' ? COLORS.accent : COLORS.primary;
+              return (
+                <View key={row.id}>
+                  <View style={styles.menuConfigRow}>
+                    <View style={styles.menuConfigInfo}>
+                      <View style={[styles.menuConfigBadge, { backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border }]}>
+                        <Text style={[styles.menuConfigBadgeText, { color: COLORS.textSecondary }]}>{row.icon_name}</Text>
+                      </View>
+                      <Text style={styles.menuConfigLabel} numberOfLines={1}>{row.label}</Text>
+                      <View style={[styles.menuConfigBadge, { backgroundColor: badgeBg }]}>
+                        <Text style={[styles.menuConfigBadgeText, { color: badgeColor }]}>{badgeText}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.menuConfigActions}>
+                      <AnimatedPressable
+                        onPress={() => {
+                          console.log('[Admin] Edit quick access pressed:', row.label);
+                          setEditingQuickAccess(row);
+                          setShowQuickAccessModal(true);
+                        }}
+                        style={styles.iconBtn}
+                      >
+                        <Pencil size={15} color={COLORS.primary} />
+                      </AnimatedPressable>
+                      <AnimatedPressable
+                        onPress={() => {
+                          console.log('[Admin] Delete quick access pressed:', row.label);
+                          Alert.alert(
+                            'Delete Button',
+                            `Delete "${row.label}"? This cannot be undone.`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: async () => {
+                                  console.log('[Admin] Confirming delete quick access:', row.id);
+                                  const { error } = await supabase.from('home_quick_access').delete().eq('id', row.id);
+                                  if (error) {
+                                    console.error('[Admin] Delete quick access error:', error.message);
+                                    Alert.alert('Error', error.message);
+                                    return;
+                                  }
+                                  console.log('[Admin] Quick access deleted:', row.label);
+                                  fetchQuickAccess();
+                                },
+                              },
+                            ]
+                          );
+                        }}
+                        style={[styles.iconBtn, styles.iconBtnDanger]}
+                      >
+                        <Trash2 size={15} color={COLORS.danger} />
+                      </AnimatedPressable>
+                      <Switch
+                        value={row.is_enabled}
+                        onValueChange={async (v) => {
+                          console.log('[Admin] Quick access toggle:', row.label, '→', v);
+                          setQuickAccessItems((prev) => prev.map((r) => r.id === row.id ? { ...r, is_enabled: v } : r));
+                          const { error } = await supabase.from('home_quick_access').update({ is_enabled: v }).eq('id', row.id);
+                          if (error) {
+                            console.error('[Admin] Quick access toggle error:', error.message);
+                            setQuickAccessItems((prev) => prev.map((r) => r.id === row.id ? { ...r, is_enabled: !v } : r));
+                          }
+                        }}
+                        trackColor={{ false: COLORS.border, true: COLORS.primary }}
+                        thumbColor="#FFFFFF"
+                      />
+                    </View>
+                  </View>
+                  {idx < quickAccessItems.length - 1 && <View style={styles.separator} />}
+                </View>
+              );
+            })
+          )}
+
+          <AnimatedPressable
+            onPress={() => {
+              if (quickAccessItems.length >= 25) {
+                Alert.alert('Limit Reached', 'You can have a maximum of 25 quick access buttons.');
+                return;
+              }
+              console.log('[Admin] Add quick access button pressed');
+              setEditingQuickAccess(null);
+              setShowQuickAccessModal(true);
+            }}
+            style={[styles.addBtn, { marginTop: 12, marginBottom: 0, opacity: quickAccessItems.length >= 25 ? 0.5 : 1 }]}
+          >
+            <Plus size={16} color={COLORS.primary} />
+            <Text style={styles.addBtnText}>Add Button</Text>
+          </AnimatedPressable>
+        </View>
+
+        {/* ── Home Sections Management ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Layout size={18} color={COLORS.text} />
+            <Text style={styles.sectionTitle}>Home Sections</Text>
+            <AnimatedPressable
+              onPress={() => { console.log('[Admin] Refresh home sections pressed'); fetchAdminHomeSections(); }}
+              style={styles.refreshButton}
+            >
+              <RefreshCw size={16} color={COLORS.primary} />
+            </AnimatedPressable>
+          </View>
+
+          {homeSectionsLoading ? (
+            <>
+              <ListItemSkeleton />
+              <ListItemSkeleton />
+            </>
+          ) : adminHomeSections.length === 0 ? (
+            <Text style={styles.emptyText}>No home sections yet.</Text>
+          ) : (
+            adminHomeSections.map((row, idx) => {
+              const ctColors: Record<string, { bg: string; color: string }> = {
+                events: { bg: COLORS.primaryMuted, color: COLORS.primary },
+                training: { bg: COLORS.accentMuted, color: COLORS.accent },
+                interviews: { bg: 'rgba(16,185,129,0.1)', color: COLORS.success },
+                webinars: { bg: 'rgba(245,158,11,0.1)', color: '#D97706' },
+              };
+              const ct = ctColors[row.content_type] ?? { bg: COLORS.primaryMuted, color: COLORS.primary };
+              return (
+                <View key={row.id}>
+                  <View style={styles.menuConfigRow}>
+                    <View style={[styles.menuConfigInfo, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
+                      <Text style={styles.menuConfigLabel} numberOfLines={1}>{row.title}</Text>
+                      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                        <View style={[styles.menuConfigBadge, { backgroundColor: ct.bg }]}>
+                          <Text style={[styles.menuConfigBadgeText, { color: ct.color }]}>{row.content_type}</Text>
+                        </View>
+                        <Text style={styles.sectionItemLimit}>Limit: {row.item_limit}</Text>
+                        {row.requires_paid ? (
+                          <View style={[styles.menuConfigBadge, { backgroundColor: COLORS.accentMuted }]}>
+                            <Text style={[styles.menuConfigBadgeText, { color: COLORS.accent }]}>Paid</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                    <View style={styles.menuConfigActions}>
+                      <AnimatedPressable
+                        onPress={() => {
+                          console.log('[Admin] Edit home section pressed:', row.title);
+                          setEditingHomeSection(row);
+                          setShowHomeSectionModal(true);
+                        }}
+                        style={styles.iconBtn}
+                      >
+                        <Pencil size={15} color={COLORS.primary} />
+                      </AnimatedPressable>
+                      <AnimatedPressable
+                        onPress={() => {
+                          console.log('[Admin] Delete home section pressed:', row.title);
+                          Alert.alert(
+                            'Delete Section',
+                            `Delete "${row.title}"? This cannot be undone.`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: async () => {
+                                  console.log('[Admin] Confirming delete home section:', row.id);
+                                  const { error } = await supabase.from('home_sections').delete().eq('id', row.id);
+                                  if (error) {
+                                    console.error('[Admin] Delete home section error:', error.message);
+                                    Alert.alert('Error', error.message);
+                                    return;
+                                  }
+                                  console.log('[Admin] Home section deleted:', row.title);
+                                  fetchAdminHomeSections();
+                                },
+                              },
+                            ]
+                          );
+                        }}
+                        style={[styles.iconBtn, styles.iconBtnDanger]}
+                      >
+                        <Trash2 size={15} color={COLORS.danger} />
+                      </AnimatedPressable>
+                      <Switch
+                        value={row.is_enabled}
+                        onValueChange={async (v) => {
+                          console.log('[Admin] Home section toggle:', row.title, '→', v);
+                          setAdminHomeSections((prev) => prev.map((r) => r.id === row.id ? { ...r, is_enabled: v } : r));
+                          const { error } = await supabase.from('home_sections').update({ is_enabled: v }).eq('id', row.id);
+                          if (error) {
+                            console.error('[Admin] Home section toggle error:', error.message);
+                            setAdminHomeSections((prev) => prev.map((r) => r.id === row.id ? { ...r, is_enabled: !v } : r));
+                          }
+                        }}
+                        trackColor={{ false: COLORS.border, true: COLORS.primary }}
+                        thumbColor="#FFFFFF"
+                      />
+                    </View>
+                  </View>
+                  {idx < adminHomeSections.length - 1 && <View style={styles.separator} />}
+                </View>
+              );
+            })
+          )}
+
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[Admin] Add home section pressed');
+              setEditingHomeSection(null);
+              setShowHomeSectionModal(true);
+            }}
+            style={[styles.addBtn, { marginTop: 12, marginBottom: 0 }]}
+          >
+            <Plus size={16} color={COLORS.primary} />
+            <Text style={styles.addBtnText}>Add Section</Text>
+          </AnimatedPressable>
+        </View>
+
         {/* ── Send Notification ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
@@ -2381,6 +3131,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_400Regular',
     color: COLORS.textTertiary,
   },
+  memberNumber: {
+    fontSize: 11,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textTertiary,
+    marginTop: 1,
+  },
   memberBadges: {
     flexDirection: 'row',
     gap: 4,
@@ -2543,6 +3299,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     fontStyle: 'italic',
+  },
+  qaCount: {
+    fontSize: 12,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.textTertiary,
+    marginRight: 4,
+  },
+  sectionItemLimit: {
+    fontSize: 11,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textTertiary,
   },
   // Notifications
   inputGroup: {

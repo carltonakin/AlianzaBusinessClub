@@ -7,8 +7,9 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Share,
 } from 'react-native';
-import { User, Mail, Shield, LogOut, Edit3, Save, Trash2 } from 'lucide-react-native';
+import { User, Mail, Shield, LogOut, Edit3, Save, Trash2, Hash, CheckSquare } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -76,6 +77,25 @@ export default function ProfileScreen() {
       'Contact us to upgrade your membership and unlock all premium content.',
       [{ text: 'OK' }]
     );
+  };
+
+  const handleShareMembershipNumber = async () => {
+    const membershipNumber = (profile as any)?.membership_number;
+    if (!membershipNumber) return;
+    console.log('[Profile] Share membership number pressed:', membershipNumber);
+    try {
+      await Share.share({
+        message: `My AB Club Membership Number: ${membershipNumber}`,
+        title: 'AB Club Membership Number',
+      });
+    } catch (err) {
+      console.error('[Profile] Share error:', err);
+    }
+  };
+
+  const handleValidateMember = () => {
+    console.log('[Profile] Validate Member button pressed');
+    router.push('/(drawer)/validate-member');
   };
 
   const handleDeleteAccount = () => {
@@ -227,6 +247,29 @@ export default function ProfileScreen() {
               </View>
               <MembershipBadge tier={profile?.membership_tier || 'free'} size="sm" />
             </View>
+
+            {/* Membership Number Card */}
+            {(profile as any)?.membership_number ? (
+              <View style={styles.membershipNumberCard}>
+                <Text style={styles.membershipNumberLabel}>Membership Number</Text>
+                <View style={styles.membershipNumberRow}>
+                  <Hash size={16} color={COLORS.primary} />
+                  <Text style={styles.membershipNumberText}>
+                    {(profile as any).membership_number}
+                  </Text>
+                </View>
+                <AnimatedPressable onPress={handleShareMembershipNumber} style={styles.shareButton}>
+                  <Text style={styles.shareButtonText}>Share</Text>
+                </AnimatedPressable>
+              </View>
+            ) : null}
+
+            {/* Validate Member button */}
+            <AnimatedPressable onPress={handleValidateMember} style={styles.validateButton}>
+              <CheckSquare size={16} color={COLORS.primary} />
+              <Text style={styles.validateButtonText}>Validate Member</Text>
+            </AnimatedPressable>
+
             {profile?.membership_tier === 'free' ? (
               <AnimatedPressable onPress={handleUpgrade} style={styles.upgradeButton}>
                 <Text style={styles.upgradeButtonText}>Upgrade to Paid</Text>
@@ -412,6 +455,60 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
+  },
+  membershipNumberCard: {
+    backgroundColor: COLORS.surfaceSecondary,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: 8,
+  },
+  membershipNumberLabel: {
+    fontSize: 11,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  membershipNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  membershipNumberText: {
+    fontSize: 22,
+    fontFamily: 'Outfit_700Bold',
+    color: COLORS.text,
+    letterSpacing: 2,
+  },
+  shareButton: {
+    backgroundColor: COLORS.primaryMuted,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignSelf: 'flex-start',
+  },
+  shareButtonText: {
+    fontSize: 13,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.primary,
+  },
+  validateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.primaryMuted,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '33',
+  },
+  validateButtonText: {
+    fontSize: 14,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.primary,
   },
   signOutButton: {
     flexDirection: 'row',
