@@ -2,6 +2,7 @@
   "expo": {
     "name": "Nexus Hub",
     "slug": "nexus-hub",
+    "owner": "alianzaempresarial",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon-pcy.png",
@@ -48,6 +49,5 @@
         "projectId": "2b5bc1c7-549b-42ce-8eae-c706e5cf84f4"
       }
     },
-    "owner": "nexus-hub"
   }
 }
