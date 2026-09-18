@@ -105,7 +105,7 @@ export default function SignInScreen() {
             <View style={styles.logoCircle}>
               <Text style={styles.logoText}>NH</Text>
             </View>
-            <Text style={styles.appName}>Nexus Hub</Text>
+            <Text style={styles.appName}>Alianza Business Club</Text>
             <Text style={styles.tagline}>Your membership community</Text>
           </View>
 

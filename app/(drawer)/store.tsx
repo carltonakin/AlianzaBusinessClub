@@ -47,7 +47,7 @@ export default function StoreScreen() {
           style={styles.heroBanner}
         >
           <ShoppingBag size={40} color="#FFFFFF" />
-          <Text style={styles.heroTitle}>Nexus Hub Store</Text>
+          <Text style={styles.heroTitle}>Alianza Business Club Store</Text>
           <Text style={styles.heroSubtitle}>
             Exclusive tools, templates, and resources to grow your business.
           </Text>

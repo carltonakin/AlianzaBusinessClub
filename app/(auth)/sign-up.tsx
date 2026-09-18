@@ -122,7 +122,7 @@ export default function SignUpScreen() {
               <Text style={styles.logoText}>NH</Text>
             </View>
             <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join the Nexus Hub community</Text>
+            <Text style={styles.subtitle}>Join the Alianza Business Club community</Text>
           </View>
 
           {/* Form */}

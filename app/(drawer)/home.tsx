@@ -197,7 +197,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Nexus Hub" rightElement={bellElement} />
+      <DrawerHeader title="Alianza Business Club" rightElement={bellElement} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
