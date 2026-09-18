@@ -175,3 +175,13 @@ INSERT INTO webinars (title, description, thumbnail_url, webinar_date, webinar_u
 
 ALTER TABLE public.menu_config ADD COLUMN IF NOT EXISTS open_in_app boolean DEFAULT false NOT NULL;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS push_token text DEFAULT NULL;
+
+CREATE OR REPLACE FUNCTION delete_user_account()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$;
