@@ -8,7 +8,6 @@ import {
   Alert,
   Linking,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -198,8 +197,11 @@ export function DrawerContent(props: any) {
     props.navigation.closeDrawer();
     if (item.externalUrl) {
       if (item.openInApp) {
-        console.log('[DrawerContent] Opening URL in-app:', item.externalUrl);
-        WebBrowser.openBrowserAsync(item.externalUrl);
+        console.log('[DrawerContent] Opening URL in-app WebView:', item.externalUrl);
+        router.push({
+          pathname: '/(drawer)/webview',
+          params: { url: item.externalUrl, title: item.label },
+        });
       } else {
         console.log('[DrawerContent] Opening URL in device browser:', item.externalUrl);
         Linking.openURL(item.externalUrl);
