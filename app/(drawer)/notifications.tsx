@@ -49,7 +49,24 @@ export default function NotificationsScreen() {
       setNotifications((data as PushNotification[]) ?? []);
       setLoading(false);
     };
+
     fetchNotifications();
+
+    const channel = supabase
+      .channel('notifications_changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'push_notifications' },
+        () => {
+          console.log('[Notifications] New notification received, re-fetching');
+          fetchNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const renderItem = ({ item }: { item: PushNotification }) => {

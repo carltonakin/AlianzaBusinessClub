@@ -129,7 +129,24 @@ export function DrawerContent(props: any) {
         setMenuConfig(null);
       }
     };
+
     fetchMenuConfig();
+
+    const channel = supabase
+      .channel('menu_config_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'menu_config' },
+        () => {
+          console.log('[DrawerContent] menu_config changed, re-fetching');
+          fetchMenuConfig();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Build nav items from menu_config if available, otherwise use hardcoded fallback
