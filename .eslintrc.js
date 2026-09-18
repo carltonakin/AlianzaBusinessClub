@@ -17,7 +17,7 @@ module.exports = {
       jsx: true
     }
   },
-  ignorePatterns: ['/dist/*', '/public/*', '/babel-plugins/*', '/backend/*'],
+  ignorePatterns: ['/dist/*', '/public/*', '/babel-plugins/*', '/backend/*', '/supabase/functions/*'],
   env: {
     browser: true,
   },

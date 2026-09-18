@@ -5,7 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SystemBars } from 'react-native-edge-to-edge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useColorScheme, Alert } from 'react-native';
+import { useColorScheme, Alert, Platform } from 'react-native';
 import { useNetworkState } from 'expo-network';
 import {
   DarkTheme,
@@ -21,14 +21,66 @@ import {
   Outfit_600SemiBold,
   Outfit_700Bold,
 } from '@expo-google-fonts/outfit';
+import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { supabase } from '@/utils/supabase';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => {
+    console.log('[Notifications] Foreground notification received');
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
+});
 
 SplashScreen.preventAutoHideAsync();
 
 const DevErrorBoundary = __DEV__
   ? ErrorBoundary
   : ({ children }: { children: React.ReactNode }) => <>{children}</>;
+
+async function registerPushToken(userId: string) {
+  try {
+    console.log('[Notifications] Requesting push notification permissions');
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      console.log('[Notifications] Permissions not granted, requesting...');
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      console.log('[Notifications] Permission denied, skipping push token registration');
+      return;
+    }
+
+    console.log('[Notifications] Getting Expo push token');
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const token = tokenData.data;
+    console.log('[Notifications] Push token obtained:', token);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ push_token: token })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('[Notifications] Failed to save push token:', error.message);
+    } else {
+      console.log('[Notifications] Push token saved to profile for user:', userId);
+    }
+  } catch (err) {
+    console.error('[Notifications] Error registering push token:', err);
+  }
+}
 
 function RootNavigator() {
   const { session, loading } = useAuth();
@@ -45,6 +97,13 @@ function RootNavigator() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, loading, segments]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    if (Platform.OS === 'web') return;
+    console.log('[Notifications] Session detected, registering push token for user:', session.user.id);
+    registerPushToken(session.user.id);
+  }, [session?.user?.id]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

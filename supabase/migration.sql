@@ -174,3 +174,4 @@ INSERT INTO webinars (title, description, thumbnail_url, webinar_date, webinar_u
 ('Pricing Your Services for Profit', 'Price confidently and stop leaving money on the table.', 'https://picsum.photos/seed/webinar3/800/450', '2025-09-02 18:00:00+00', 'https://alianzaempresarial.online', false, null);
 
 ALTER TABLE public.menu_config ADD COLUMN IF NOT EXISTS open_in_app boolean DEFAULT false NOT NULL;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS push_token text DEFAULT NULL;
