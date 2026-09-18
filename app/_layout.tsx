@@ -63,7 +63,9 @@ async function registerPushToken(userId: string) {
     }
 
     console.log('[Notifications] Getting Expo push token');
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: '2b5bc1c7-549b-42ce-8eae-c706e5cf84f4',
+    });
     const token = tokenData.data;
     console.log('[Notifications] Push token obtained:', token);
 
