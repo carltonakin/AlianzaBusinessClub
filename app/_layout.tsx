@@ -23,6 +23,7 @@ import {
 } from '@expo-google-fonts/outfit';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { supabase } from '@/utils/supabase';
@@ -47,6 +48,10 @@ const DevErrorBoundary = __DEV__
   : ({ children }: { children: React.ReactNode }) => <>{children}</>;
 
 async function registerPushToken(userId: string) {
+  if (!Device.isDevice) {
+    console.log('[Notifications] Skipping push token registration — not a physical device');
+    return;
+  }
   try {
     console.log('[Notifications] Requesting push notification permissions');
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
