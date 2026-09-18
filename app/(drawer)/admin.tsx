@@ -116,6 +116,7 @@ interface MenuConfigRow {
   requires_paid: boolean;
   sort_order: number;
   external_url: string | null;
+  open_in_app: boolean;
 }
 
 // ─── Add-item form state shapes ───────────────────────────────────────────────
@@ -1088,6 +1089,7 @@ function MenuItemModal({
   const [externalUrl, setExternalUrl] = useState('');
   const [requiresPaid, setRequiresPaid] = useState(false);
   const [isEnabled, setIsEnabled] = useState(true);
+  const [openInApp, setOpenInApp] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -1100,6 +1102,7 @@ function MenuItemModal({
         setExternalUrl(item.external_url ?? '');
         setRequiresPaid(item.requires_paid);
         setIsEnabled(item.is_enabled);
+        setOpenInApp(item.open_in_app ?? false);
       } else {
         setLabel('');
         setLinkType('internal');
@@ -1107,6 +1110,7 @@ function MenuItemModal({
         setExternalUrl('');
         setRequiresPaid(false);
         setIsEnabled(true);
+        setOpenInApp(false);
       }
     }
   }, [visible, item]);
@@ -1138,6 +1142,7 @@ function MenuItemModal({
           external_url: extUrl,
           requires_paid: requiresPaid,
           is_enabled: isEnabled,
+          open_in_app: openInApp,
         })
         .eq('id', item.id);
       error = result.error;
@@ -1148,6 +1153,7 @@ function MenuItemModal({
         external_url: extUrl,
         requires_paid: requiresPaid,
         is_enabled: isEnabled,
+        open_in_app: openInApp,
         sort_order: nextSortOrder,
       });
       error = result.error;
@@ -1249,6 +1255,22 @@ function MenuItemModal({
                 autoCapitalize="none"
                 keyboardType="url"
               />
+            </View>
+          )}
+
+          {linkType === 'external' && (
+            <View>
+              <SwitchRow
+                label="Open inside app"
+                value={openInApp}
+                onValueChange={(v) => {
+                  console.log('[Admin] Menu item open_in_app →', v);
+                  setOpenInApp(v);
+                }}
+              />
+              <Text style={menuItemModalStyles.helperText}>
+                When on, the URL loads in an in-app browser. When off, it opens in the device's default browser.
+              </Text>
             </View>
           )}
 
@@ -2704,6 +2726,15 @@ const menuItemModalStyles = StyleSheet.create({
   pillTextActive: {
     color: COLORS.primary,
     fontFamily: 'Outfit_600SemiBold',
+  },
+  helperText: {
+    fontSize: 12,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textTertiary,
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 8,
+    lineHeight: 17,
   },
 });
 

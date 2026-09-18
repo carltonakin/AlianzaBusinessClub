@@ -172,3 +172,5 @@ INSERT INTO webinars (title, description, thumbnail_url, webinar_date, webinar_u
 ('Lead Generation Secrets', 'Top 5 lead generation strategies working right now.', 'https://picsum.photos/seed/webinar1/800/450', '2025-08-05 17:00:00+00', 'https://alianzaempresarial.online', false, null),
 ('Email Marketing That Converts', 'Email sequences that generated $200K in 30 days.', 'https://picsum.photos/seed/webinar2/800/450', '2025-06-10 17:00:00+00', null, true, 'https://www.w3schools.com/html/mov_bbb.mp4'),
 ('Pricing Your Services for Profit', 'Price confidently and stop leaving money on the table.', 'https://picsum.photos/seed/webinar3/800/450', '2025-09-02 18:00:00+00', 'https://alianzaempresarial.online', false, null);
+
+ALTER TABLE public.menu_config ADD COLUMN IF NOT EXISTS open_in_app boolean DEFAULT false NOT NULL;

@@ -8,6 +8,7 @@ import {
   Alert,
   Linking,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +42,7 @@ interface NavItem {
   requiresPaid?: boolean;
   requiresAdmin?: boolean;
   externalUrl?: string | null;
+  openInApp?: boolean;
 }
 
 interface MenuConfigRow {
@@ -51,6 +53,7 @@ interface MenuConfigRow {
   requires_paid: boolean;
   sort_order: number;
   external_url: string | null;
+  open_in_app: boolean;
 }
 
 // Map route → icon factory so we can build icons dynamically from menu_config
@@ -148,6 +151,7 @@ export function DrawerContent(props: any) {
         iconActive: icons.iconActive,
         requiresPaid: false,
         externalUrl: r.external_url,
+        openInApp: r.open_in_app,
       };
     });
 
@@ -160,6 +164,7 @@ export function DrawerContent(props: any) {
         iconActive: icons.iconActive,
         requiresPaid: r.requires_paid,
         externalUrl: r.external_url,
+        openInApp: r.open_in_app,
       };
     });
   } else {
@@ -192,8 +197,13 @@ export function DrawerContent(props: any) {
     console.log('[DrawerContent] Nav item pressed:', item.label, '→', item.externalUrl ?? item.route);
     props.navigation.closeDrawer();
     if (item.externalUrl) {
-      console.log('[DrawerContent] Opening external URL:', item.externalUrl);
-      Linking.openURL(item.externalUrl);
+      if (item.openInApp) {
+        console.log('[DrawerContent] Opening URL in-app:', item.externalUrl);
+        WebBrowser.openBrowserAsync(item.externalUrl);
+      } else {
+        console.log('[DrawerContent] Opening URL in device browser:', item.externalUrl);
+        Linking.openURL(item.externalUrl);
+      }
     } else {
       router.push(item.route as any);
     }
