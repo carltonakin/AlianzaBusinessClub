@@ -32,10 +32,12 @@ export default function WebinarsScreen() {
   const [error, setError] = useState('');
 
   const isPaid = profile?.membership_tier === 'paid';
+  const isAdmin = profile?.role === 'admin';
+  const hasAccess = isPaid || isAdmin;
 
   useEffect(() => {
-    if (isPaid) fetchWebinars();
-  }, [isPaid]);
+    if (hasAccess) fetchWebinars();
+  }, [hasAccess]);
 
   const fetchWebinars = async () => {
     console.log('[Webinars] Fetching webinars');
@@ -62,7 +64,7 @@ export default function WebinarsScreen() {
     }
   };
 
-  if (!isPaid) {
+  if (!hasAccess) {
     return (
       <View style={styles.container}>
         <DrawerHeader title="Webinars" />

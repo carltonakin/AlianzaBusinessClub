@@ -33,10 +33,12 @@ export default function InterviewsScreen() {
   const [error, setError] = useState('');
 
   const isPaid = profile?.membership_tier === 'paid';
+  const isAdmin = profile?.role === 'admin';
+  const hasAccess = isPaid || isAdmin;
 
   useEffect(() => {
-    if (isPaid) fetchInterviews();
-  }, [isPaid]);
+    if (hasAccess) fetchInterviews();
+  }, [hasAccess]);
 
   const fetchInterviews = async () => {
     console.log('[Interviews] Fetching interviews');
@@ -63,7 +65,7 @@ export default function InterviewsScreen() {
     }
   };
 
-  if (!isPaid) {
+  if (!hasAccess) {
     return (
       <View style={styles.container}>
         <DrawerHeader title="Interviews" />

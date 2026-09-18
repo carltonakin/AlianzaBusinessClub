@@ -36,14 +36,16 @@ export default function CommunityScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const isPaid = profile?.membership_tier === 'paid';
+  const isAdmin = profile?.role === 'admin';
+  const hasAccess = isPaid || isAdmin;
 
   useEffect(() => {
-    if (isPaid) {
+    if (hasAccess) {
       fetchPosts();
       fetchLikedPosts();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPaid]);
+  }, [hasAccess]);
 
   const fetchPosts = async () => {
     console.log('[Community] Fetching community posts');
@@ -161,7 +163,7 @@ export default function CommunityScreen() {
     }
   };
 
-  if (!isPaid) {
+  if (!hasAccess) {
     return (
       <View style={styles.container}>
         <DrawerHeader title="Community" />

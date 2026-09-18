@@ -30,10 +30,12 @@ export default function TrainingScreen() {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   const isPaid = profile?.membership_tier === 'paid';
+  const isAdmin = profile?.role === 'admin';
+  const hasAccess = isPaid || isAdmin;
 
   useEffect(() => {
-    if (isPaid) fetchPosts();
-  }, [isPaid]);
+    if (hasAccess) fetchPosts();
+  }, [hasAccess]);
 
   const fetchPosts = async () => {
     console.log('[Training] Fetching training posts');
@@ -60,7 +62,7 @@ export default function TrainingScreen() {
     }
   };
 
-  if (!isPaid) {
+  if (!hasAccess) {
     return (
       <View style={styles.container}>
         <DrawerHeader title="Training" />

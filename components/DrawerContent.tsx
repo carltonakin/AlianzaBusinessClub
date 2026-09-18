@@ -148,7 +148,7 @@ export function DrawerContent(props: any) {
 
   const renderNavItem = (item: NavItem) => {
     const active = isActive(item.route);
-    const locked = item.requiresPaid && !isPaid;
+    const locked = item.requiresPaid && !isPaid && !isAdmin;
 
     return (
       <AnimatedPressable
