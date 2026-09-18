@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MembershipBadge } from '@/components/MembershipBadge';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { getInitials } from '@/utils/helpers';
+import { supabase } from '@/utils/supabase';
 
 interface NavItem {
   label: string;
@@ -39,6 +40,56 @@ interface NavItem {
   requiresAdmin?: boolean;
 }
 
+interface MenuConfigRow {
+  id: string;
+  route: string;
+  label: string;
+  is_enabled: boolean;
+  requires_paid: boolean;
+  sort_order: number;
+}
+
+// Map route → icon factory so we can build icons dynamically from menu_config
+function getIconsForRoute(route: string, active: boolean): { icon: React.ReactNode; iconActive: React.ReactNode } {
+  const color = active ? COLORS.primary : COLORS.textSecondary;
+  const activeColor = COLORS.primary;
+  switch (route) {
+    case '/(drawer)/home':
+      return { icon: <House size={20} color={COLORS.textSecondary} />, iconActive: <House size={20} color={activeColor} /> };
+    case '/(drawer)/magazine':
+      return { icon: <BookOpen size={20} color={COLORS.textSecondary} />, iconActive: <BookOpen size={20} color={activeColor} /> };
+    case '/(drawer)/events':
+      return { icon: <Calendar size={20} color={COLORS.textSecondary} />, iconActive: <Calendar size={20} color={activeColor} /> };
+    case '/(drawer)/store':
+      return { icon: <ShoppingBag size={20} color={COLORS.textSecondary} />, iconActive: <ShoppingBag size={20} color={activeColor} /> };
+    case '/(drawer)/training':
+      return { icon: <GraduationCap size={20} color={COLORS.textSecondary} />, iconActive: <GraduationCap size={20} color={activeColor} /> };
+    case '/(drawer)/interviews':
+      return { icon: <Mic size={20} color={COLORS.textSecondary} />, iconActive: <Mic size={20} color={activeColor} /> };
+    case '/(drawer)/webinars':
+      return { icon: <Video size={20} color={COLORS.textSecondary} />, iconActive: <Video size={20} color={activeColor} /> };
+    case '/(drawer)/community':
+      return { icon: <Users size={20} color={COLORS.textSecondary} />, iconActive: <Users size={20} color={activeColor} /> };
+    default:
+      return { icon: <BookOpen size={20} color={COLORS.textSecondary} />, iconActive: <BookOpen size={20} color={activeColor} /> };
+  }
+}
+
+// Hardcoded fallback nav items (used when menu_config is unavailable)
+const FALLBACK_FREE_ITEMS: Omit<NavItem, 'icon' | 'iconActive'>[] = [
+  { label: 'Home', route: '/(drawer)/home' },
+  { label: 'Magazine', route: '/(drawer)/magazine' },
+  { label: 'Events', route: '/(drawer)/events' },
+  { label: 'Store', route: '/(drawer)/store' },
+];
+
+const FALLBACK_PAID_ITEMS: Omit<NavItem, 'icon' | 'iconActive'>[] = [
+  { label: 'Training', route: '/(drawer)/training', requiresPaid: true },
+  { label: 'Interviews', route: '/(drawer)/interviews', requiresPaid: true },
+  { label: 'Webinars', route: '/(drawer)/webinars', requiresPaid: true },
+  { label: 'Community', route: '/(drawer)/community', requiresPaid: true },
+];
+
 export function DrawerContent(props: any) {
   const router = useRouter();
   const pathname = usePathname();
@@ -48,63 +99,71 @@ export function DrawerContent(props: any) {
   const isPaid = profile?.membership_tier === 'paid';
   const isAdmin = profile?.role === 'admin';
 
-  const freeItems: NavItem[] = [
-    {
-      label: 'Home',
-      route: '/(drawer)/home',
-      icon: <House size={20} color={COLORS.textSecondary} />,
-      iconActive: <House size={20} color={COLORS.primary} />,
-    },
-    {
-      label: 'Magazine',
-      route: '/(drawer)/magazine',
-      icon: <BookOpen size={20} color={COLORS.textSecondary} />,
-      iconActive: <BookOpen size={20} color={COLORS.primary} />,
-    },
-    {
-      label: 'Events',
-      route: '/(drawer)/events',
-      icon: <Calendar size={20} color={COLORS.textSecondary} />,
-      iconActive: <Calendar size={20} color={COLORS.primary} />,
-    },
-    {
-      label: 'Store',
-      route: '/(drawer)/store',
-      icon: <ShoppingBag size={20} color={COLORS.textSecondary} />,
-      iconActive: <ShoppingBag size={20} color={COLORS.primary} />,
-    },
-  ];
+  const [menuConfig, setMenuConfig] = useState<MenuConfigRow[] | null>(null);
 
-  const paidItems: NavItem[] = [
-    {
-      label: 'Training',
-      route: '/(drawer)/training',
-      icon: <GraduationCap size={20} color={COLORS.textSecondary} />,
-      iconActive: <GraduationCap size={20} color={COLORS.primary} />,
-      requiresPaid: true,
-    },
-    {
-      label: 'Interviews',
-      route: '/(drawer)/interviews',
-      icon: <Mic size={20} color={COLORS.textSecondary} />,
-      iconActive: <Mic size={20} color={COLORS.primary} />,
-      requiresPaid: true,
-    },
-    {
-      label: 'Webinars',
-      route: '/(drawer)/webinars',
-      icon: <Video size={20} color={COLORS.textSecondary} />,
-      iconActive: <Video size={20} color={COLORS.primary} />,
-      requiresPaid: true,
-    },
-    {
-      label: 'Community',
-      route: '/(drawer)/community',
-      icon: <Users size={20} color={COLORS.textSecondary} />,
-      iconActive: <Users size={20} color={COLORS.primary} />,
-      requiresPaid: true,
-    },
-  ];
+  useEffect(() => {
+    const fetchMenuConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('menu_config')
+          .select('*')
+          .order('sort_order', { ascending: true });
+        if (error) {
+          console.log('[DrawerContent] menu_config fetch error (using fallback):', error.message);
+          setMenuConfig(null);
+        } else {
+          console.log('[DrawerContent] menu_config loaded:', data?.length ?? 0, 'items');
+          setMenuConfig((data as MenuConfigRow[]) ?? null);
+        }
+      } catch (err) {
+        console.log('[DrawerContent] menu_config fetch exception (using fallback):', err);
+        setMenuConfig(null);
+      }
+    };
+    fetchMenuConfig();
+  }, []);
+
+  // Build nav items from menu_config if available, otherwise use hardcoded fallback
+  let freeItems: NavItem[];
+  let paidItems: NavItem[];
+
+  if (menuConfig && menuConfig.length > 0) {
+    const enabledRows = menuConfig.filter((r) => r.is_enabled);
+    const freeRows = enabledRows.filter((r) => !r.requires_paid);
+    const paidRows = enabledRows.filter((r) => r.requires_paid);
+
+    freeItems = freeRows.map((r) => {
+      const icons = getIconsForRoute(r.route, false);
+      return {
+        label: r.label,
+        route: r.route,
+        icon: icons.icon,
+        iconActive: icons.iconActive,
+        requiresPaid: false,
+      };
+    });
+
+    paidItems = paidRows.map((r) => {
+      const icons = getIconsForRoute(r.route, false);
+      return {
+        label: r.label,
+        route: r.route,
+        icon: icons.icon,
+        iconActive: icons.iconActive,
+        requiresPaid: r.requires_paid,
+      };
+    });
+  } else {
+    // Fallback to hardcoded items
+    freeItems = FALLBACK_FREE_ITEMS.map((item) => {
+      const icons = getIconsForRoute(item.route, false);
+      return { ...item, icon: icons.icon, iconActive: icons.iconActive };
+    });
+    paidItems = FALLBACK_PAID_ITEMS.map((item) => {
+      const icons = getIconsForRoute(item.route, false);
+      return { ...item, icon: icons.icon, iconActive: icons.iconActive };
+    });
+  }
 
   const accountItems: NavItem[] = [
     {

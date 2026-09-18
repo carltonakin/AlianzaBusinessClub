@@ -1,3 +1,38 @@
+/*
+ * IMPORTANT: Run the following SQL in your Supabase SQL editor before using the
+ * Menu Configuration feature:
+ *
+ * CREATE TABLE IF NOT EXISTS public.menu_config (
+ *   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+ *   route text UNIQUE NOT NULL,
+ *   label text NOT NULL,
+ *   is_enabled boolean DEFAULT true NOT NULL,
+ *   requires_paid boolean DEFAULT false NOT NULL,
+ *   sort_order integer DEFAULT 0 NOT NULL
+ * );
+ *
+ * ALTER TABLE public.menu_config ENABLE ROW LEVEL SECURITY;
+ *
+ * CREATE POLICY "Admins can manage menu_config" ON public.menu_config
+ *   FOR ALL TO authenticated
+ *   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'))
+ *   WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+ *
+ * CREATE POLICY "Anyone can read menu_config" ON public.menu_config
+ *   FOR SELECT TO authenticated USING (true);
+ *
+ * INSERT INTO public.menu_config (route, label, is_enabled, requires_paid, sort_order) VALUES
+ *   ('/(drawer)/home', 'Home', true, false, 0),
+ *   ('/(drawer)/magazine', 'Magazine', true, false, 1),
+ *   ('/(drawer)/events', 'Events', true, false, 2),
+ *   ('/(drawer)/store', 'Store', true, false, 3),
+ *   ('/(drawer)/training', 'Training', true, true, 4),
+ *   ('/(drawer)/interviews', 'Interviews', true, true, 5),
+ *   ('/(drawer)/webinars', 'Webinars', true, true, 6),
+ *   ('/(drawer)/community', 'Community', true, true, 7)
+ * ON CONFLICT (route) DO NOTHING;
+ */
+
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
@@ -32,6 +67,8 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Pencil,
+  Menu,
 } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
@@ -64,6 +101,15 @@ interface RecentSignup {
 interface GrowthData {
   thisWeek: number;
   lastWeek: number;
+}
+
+interface MenuConfigRow {
+  id: string;
+  route: string;
+  label: string;
+  is_enabled: boolean;
+  requires_paid: boolean;
+  sort_order: number;
 }
 
 // ─── Add-item form state shapes ───────────────────────────────────────────────
@@ -580,6 +626,428 @@ function AddWebinarModal({
   );
 }
 
+// ─── Edit modals ──────────────────────────────────────────────────────────────
+
+function EditTrainingModal({
+  visible,
+  onClose,
+  onSaved,
+  item,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  item: TrainingPost | null;
+}) {
+  const [form, setForm] = useState<TrainingForm>({
+    title: '',
+    description: '',
+    content: '',
+    video_url: '',
+    thumbnail_url: '',
+    category: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (item) {
+      setForm({
+        title: item.title ?? '',
+        description: (item as any).description ?? '',
+        content: (item as any).content ?? '',
+        video_url: (item as any).video_url ?? '',
+        thumbnail_url: (item as any).thumbnail_url ?? '',
+        category: (item as any).category ?? '',
+      });
+    }
+  }, [item]);
+
+  const set = (key: keyof TrainingForm) => (v: string) =>
+    setForm((prev) => ({ ...prev, [key]: v }));
+
+  const handleSave = async () => {
+    if (!item) return;
+    if (!form.title.trim()) {
+      Alert.alert('Validation', 'Title is required.');
+      return;
+    }
+    console.log('[Admin] Editing training post:', item.id, form.title);
+    setSaving(true);
+    const { error } = await supabase
+      .from('training_posts')
+      .update({
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        content: form.content.trim() || null,
+        video_url: form.video_url.trim() || null,
+        thumbnail_url: form.thumbnail_url.trim() || null,
+        category: form.category.trim() || null,
+      })
+      .eq('id', item.id);
+    setSaving(false);
+    if (error) {
+      console.error('[Admin] Error editing training post:', error.message);
+      Alert.alert('Error', error.message);
+      return;
+    }
+    console.log('[Admin] Training post edited successfully');
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={modalStyles.container}>
+        <View style={modalStyles.header}>
+          <Text style={modalStyles.title}>Edit Training Post</Text>
+          <AnimatedPressable onPress={onClose} style={modalStyles.closeBtn}>
+            <X size={20} color={COLORS.text} />
+          </AnimatedPressable>
+        </View>
+        <ScrollView style={modalStyles.body} showsVerticalScrollIndicator={false}>
+          <FormInput label="Title *" value={form.title} onChangeText={set('title')} />
+          <FormInput label="Description" value={form.description} onChangeText={set('description')} multiline />
+          <FormInput label="Content" value={form.content} onChangeText={set('content')} multiline />
+          <FormInput label="Video URL" value={form.video_url} onChangeText={set('video_url')} placeholder="https://" />
+          <FormInput label="Thumbnail URL" value={form.thumbnail_url} onChangeText={set('thumbnail_url')} placeholder="https://" />
+          <FormInput label="Category" value={form.category} onChangeText={set('category')} placeholder="e.g. Sales" />
+        </ScrollView>
+        <View style={modalStyles.footer}>
+          <AnimatedPressable
+            onPress={handleSave}
+            disabled={saving}
+            style={[modalStyles.saveBtn, saving && modalStyles.saveBtnDisabled]}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={modalStyles.saveBtnText}>Save Changes</Text>
+            )}
+          </AnimatedPressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function EditEventModal({
+  visible,
+  onClose,
+  onSaved,
+  item,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  item: Event | null;
+}) {
+  const [form, setForm] = useState<EventForm>({
+    title: '',
+    description: '',
+    image_url: '',
+    event_date: new Date(),
+    location: '',
+    is_virtual: false,
+    event_url: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (item) {
+      const parsedDate = item.event_date ? new Date(item.event_date) : new Date();
+      setForm({
+        title: item.title ?? '',
+        description: (item as any).description ?? '',
+        image_url: (item as any).image_url ?? '',
+        event_date: isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
+        location: (item as any).location ?? '',
+        is_virtual: (item as any).is_virtual ?? false,
+        event_url: (item as any).event_url ?? '',
+      });
+    }
+  }, [item]);
+
+  const set = (key: keyof EventForm) => (v: string) =>
+    setForm((prev) => ({ ...prev, [key]: v }));
+
+  const handleSave = async () => {
+    if (!item) return;
+    if (!form.title.trim()) {
+      Alert.alert('Validation', 'Title is required.');
+      return;
+    }
+    console.log('[Admin] Editing event:', item.id, form.title);
+    setSaving(true);
+    const { error } = await supabase
+      .from('events')
+      .update({
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        image_url: form.image_url.trim() || null,
+        event_date: form.event_date.toISOString(),
+        location: form.location.trim() || null,
+        is_virtual: form.is_virtual,
+        event_url: form.event_url.trim() || null,
+      })
+      .eq('id', item.id);
+    setSaving(false);
+    if (error) {
+      console.error('[Admin] Error editing event:', error.message);
+      Alert.alert('Error', error.message);
+      return;
+    }
+    console.log('[Admin] Event edited successfully');
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={modalStyles.container}>
+        <View style={modalStyles.header}>
+          <Text style={modalStyles.title}>Edit Event</Text>
+          <AnimatedPressable onPress={onClose} style={modalStyles.closeBtn}>
+            <X size={20} color={COLORS.text} />
+          </AnimatedPressable>
+        </View>
+        <ScrollView style={modalStyles.body} showsVerticalScrollIndicator={false}>
+          <FormInput label="Title *" value={form.title} onChangeText={set('title')} />
+          <FormInput label="Description" value={form.description} onChangeText={set('description')} multiline />
+          <FormInput label="Image URL" value={form.image_url} onChangeText={set('image_url')} placeholder="https://" />
+          <DateRow label="Event Date" value={form.event_date} onChange={(d) => setForm((p) => ({ ...p, event_date: d }))} />
+          <FormInput label="Location" value={form.location} onChangeText={set('location')} />
+          <SwitchRow label="Virtual Event" value={form.is_virtual} onValueChange={(v) => setForm((p) => ({ ...p, is_virtual: v }))} />
+          <FormInput label="Event URL" value={form.event_url} onChangeText={set('event_url')} placeholder="https://" />
+        </ScrollView>
+        <View style={modalStyles.footer}>
+          <AnimatedPressable
+            onPress={handleSave}
+            disabled={saving}
+            style={[modalStyles.saveBtn, saving && modalStyles.saveBtnDisabled]}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={modalStyles.saveBtnText}>Save Changes</Text>
+            )}
+          </AnimatedPressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function EditInterviewModal({
+  visible,
+  onClose,
+  onSaved,
+  item,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  item: Interview | null;
+}) {
+  const [form, setForm] = useState<InterviewForm>({
+    title: '',
+    description: '',
+    video_url: '',
+    thumbnail_url: '',
+    guest_name: '',
+    guest_title: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (item) {
+      setForm({
+        title: item.title ?? '',
+        description: (item as any).description ?? '',
+        video_url: (item as any).video_url ?? '',
+        thumbnail_url: (item as any).thumbnail_url ?? '',
+        guest_name: (item as any).guest_name ?? '',
+        guest_title: (item as any).guest_title ?? '',
+      });
+    }
+  }, [item]);
+
+  const set = (key: keyof InterviewForm) => (v: string) =>
+    setForm((prev) => ({ ...prev, [key]: v }));
+
+  const handleSave = async () => {
+    if (!item) return;
+    if (!form.title.trim()) {
+      Alert.alert('Validation', 'Title is required.');
+      return;
+    }
+    console.log('[Admin] Editing interview:', item.id, form.title);
+    setSaving(true);
+    const { error } = await supabase
+      .from('interviews')
+      .update({
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        video_url: form.video_url.trim() || null,
+        thumbnail_url: form.thumbnail_url.trim() || null,
+        guest_name: form.guest_name.trim() || null,
+        guest_title: form.guest_title.trim() || null,
+      })
+      .eq('id', item.id);
+    setSaving(false);
+    if (error) {
+      console.error('[Admin] Error editing interview:', error.message);
+      Alert.alert('Error', error.message);
+      return;
+    }
+    console.log('[Admin] Interview edited successfully');
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={modalStyles.container}>
+        <View style={modalStyles.header}>
+          <Text style={modalStyles.title}>Edit Interview</Text>
+          <AnimatedPressable onPress={onClose} style={modalStyles.closeBtn}>
+            <X size={20} color={COLORS.text} />
+          </AnimatedPressable>
+        </View>
+        <ScrollView style={modalStyles.body} showsVerticalScrollIndicator={false}>
+          <FormInput label="Title *" value={form.title} onChangeText={set('title')} />
+          <FormInput label="Description" value={form.description} onChangeText={set('description')} multiline />
+          <FormInput label="Video URL" value={form.video_url} onChangeText={set('video_url')} placeholder="https://" />
+          <FormInput label="Thumbnail URL" value={form.thumbnail_url} onChangeText={set('thumbnail_url')} placeholder="https://" />
+          <FormInput label="Guest Name" value={form.guest_name} onChangeText={set('guest_name')} />
+          <FormInput label="Guest Title" value={form.guest_title} onChangeText={set('guest_title')} placeholder="e.g. CEO, Acme Corp" />
+        </ScrollView>
+        <View style={modalStyles.footer}>
+          <AnimatedPressable
+            onPress={handleSave}
+            disabled={saving}
+            style={[modalStyles.saveBtn, saving && modalStyles.saveBtnDisabled]}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={modalStyles.saveBtnText}>Save Changes</Text>
+            )}
+          </AnimatedPressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function EditWebinarModal({
+  visible,
+  onClose,
+  onSaved,
+  item,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  item: Webinar | null;
+}) {
+  const [form, setForm] = useState<WebinarForm>({
+    title: '',
+    description: '',
+    thumbnail_url: '',
+    webinar_date: new Date(),
+    webinar_url: '',
+    is_recorded: false,
+    recording_url: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (item) {
+      const parsedDate = (item as any).webinar_date ? new Date((item as any).webinar_date) : new Date();
+      setForm({
+        title: item.title ?? '',
+        description: (item as any).description ?? '',
+        thumbnail_url: (item as any).thumbnail_url ?? '',
+        webinar_date: isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
+        webinar_url: (item as any).webinar_url ?? '',
+        is_recorded: (item as any).is_recorded ?? false,
+        recording_url: (item as any).recording_url ?? '',
+      });
+    }
+  }, [item]);
+
+  const set = (key: keyof WebinarForm) => (v: string) =>
+    setForm((prev) => ({ ...prev, [key]: v }));
+
+  const handleSave = async () => {
+    if (!item) return;
+    if (!form.title.trim()) {
+      Alert.alert('Validation', 'Title is required.');
+      return;
+    }
+    console.log('[Admin] Editing webinar:', item.id, form.title);
+    setSaving(true);
+    const { error } = await supabase
+      .from('webinars')
+      .update({
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        thumbnail_url: form.thumbnail_url.trim() || null,
+        webinar_date: form.webinar_date.toISOString(),
+        webinar_url: form.webinar_url.trim() || null,
+        is_recorded: form.is_recorded,
+        recording_url: form.recording_url.trim() || null,
+      })
+      .eq('id', item.id);
+    setSaving(false);
+    if (error) {
+      console.error('[Admin] Error editing webinar:', error.message);
+      Alert.alert('Error', error.message);
+      return;
+    }
+    console.log('[Admin] Webinar edited successfully');
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={modalStyles.container}>
+        <View style={modalStyles.header}>
+          <Text style={modalStyles.title}>Edit Webinar</Text>
+          <AnimatedPressable onPress={onClose} style={modalStyles.closeBtn}>
+            <X size={20} color={COLORS.text} />
+          </AnimatedPressable>
+        </View>
+        <ScrollView style={modalStyles.body} showsVerticalScrollIndicator={false}>
+          <FormInput label="Title *" value={form.title} onChangeText={set('title')} />
+          <FormInput label="Description" value={form.description} onChangeText={set('description')} multiline />
+          <FormInput label="Thumbnail URL" value={form.thumbnail_url} onChangeText={set('thumbnail_url')} placeholder="https://" />
+          <DateRow label="Webinar Date" value={form.webinar_date} onChange={(d) => setForm((p) => ({ ...p, webinar_date: d }))} />
+          <FormInput label="Webinar URL" value={form.webinar_url} onChangeText={set('webinar_url')} placeholder="https://" />
+          <SwitchRow label="Is Recorded" value={form.is_recorded} onValueChange={(v) => setForm((p) => ({ ...p, is_recorded: v }))} />
+          {form.is_recorded && (
+            <FormInput label="Recording URL" value={form.recording_url} onChangeText={set('recording_url')} placeholder="https://" />
+          )}
+        </ScrollView>
+        <View style={modalStyles.footer}>
+          <AnimatedPressable
+            onPress={handleSave}
+            disabled={saving}
+            style={[modalStyles.saveBtn, saving && modalStyles.saveBtnDisabled]}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={modalStyles.saveBtnText}>Save Changes</Text>
+            )}
+          </AnimatedPressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Content list rows ────────────────────────────────────────────────────────
 
 function ContentRow({
@@ -589,6 +1057,7 @@ function ContentRow({
   table,
   onToggle,
   onDelete,
+  onEdit,
 }: {
   id: string;
   title: string;
@@ -596,6 +1065,7 @@ function ContentRow({
   table: string;
   onToggle: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const [toggling, setToggling] = useState(false);
 
@@ -656,6 +1126,15 @@ function ContentRow({
             <EyeOff size={16} color={COLORS.textTertiary} />
           )}
         </AnimatedPressable>
+        <AnimatedPressable
+          onPress={() => {
+            console.log('[Admin] Edit pressed for', table, id);
+            onEdit();
+          }}
+          style={styles.iconBtn}
+        >
+          <Pencil size={16} color={COLORS.primary} />
+        </AnimatedPressable>
         <AnimatedPressable onPress={handleDelete} style={[styles.iconBtn, styles.iconBtnDanger]}>
           <Trash2 size={16} color={COLORS.danger} />
         </AnimatedPressable>
@@ -686,11 +1165,17 @@ export default function AdminScreen() {
   const [webinars, setWebinars] = useState<Webinar[]>([]);
   const [contentLoading, setContentLoading] = useState(false);
 
-  // Modals
+  // Add modals
   const [showAddTraining, setShowAddTraining] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showAddInterview, setShowAddInterview] = useState(false);
   const [showAddWebinar, setShowAddWebinar] = useState(false);
+
+  // Edit modals
+  const [editingTraining, setEditingTraining] = useState<TrainingPost | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
+  const [editingWebinar, setEditingWebinar] = useState<Webinar | null>(null);
 
   // Notifications
   const [notifTitle, setNotifTitle] = useState('');
@@ -698,12 +1183,17 @@ export default function AdminScreen() {
   const [targetTier, setTargetTier] = useState<TargetTier>('all');
   const [sendingNotif, setSendingNotif] = useState(false);
 
+  // Menu config
+  const [menuConfig, setMenuConfig] = useState<MenuConfigRow[]>([]);
+  const [menuConfigLoading, setMenuConfigLoading] = useState(false);
+
   const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
     if (isAdmin) {
       fetchData();
       fetchContent('training');
+      fetchMenuConfig();
     }
   }, [isAdmin, fetchContent]);
 
@@ -801,6 +1291,51 @@ export default function AdminScreen() {
       setContentLoading(false);
     }
   }, []);
+
+  // ── Fetch menu config ────────────────────────────────────────────────────────
+
+  const fetchMenuConfig = async () => {
+    console.log('[Admin] Fetching menu config');
+    setMenuConfigLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('menu_config')
+        .select('*')
+        .order('sort_order', { ascending: true });
+      if (error) {
+        console.error('[Admin] Menu config fetch error:', error.message);
+      } else {
+        setMenuConfig((data as MenuConfigRow[]) ?? []);
+        console.log('[Admin] Menu config loaded:', data?.length ?? 0, 'items');
+      }
+    } catch (err) {
+      console.error('[Admin] Menu config fetch error:', err);
+    } finally {
+      setMenuConfigLoading(false);
+    }
+  };
+
+  const handleMenuToggle = async (row: MenuConfigRow, newValue: boolean) => {
+    console.log('[Admin] Menu toggle pressed:', row.label, '→', newValue);
+    // Optimistic update
+    setMenuConfig((prev) =>
+      prev.map((r) => (r.id === row.id ? { ...r, is_enabled: newValue } : r))
+    );
+    const { error } = await supabase
+      .from('menu_config')
+      .update({ is_enabled: newValue })
+      .eq('id', row.id);
+    if (error) {
+      console.error('[Admin] Menu toggle error:', error.message);
+      // Revert on error
+      setMenuConfig((prev) =>
+        prev.map((r) => (r.id === row.id ? { ...r, is_enabled: !newValue } : r))
+      );
+      Alert.alert('Error', error.message);
+    } else {
+      console.log('[Admin] Menu item', row.label, 'is_enabled set to', newValue);
+    }
+  };
 
   const handleTabChange = (tab: ContentTab) => {
     console.log('[Admin] Content tab changed to:', tab);
@@ -990,6 +1525,32 @@ export default function AdminScreen() {
         onSaved={() => fetchContent('webinars')}
       />
 
+      {/* Edit modals */}
+      <EditTrainingModal
+        visible={editingTraining !== null}
+        onClose={() => setEditingTraining(null)}
+        onSaved={() => fetchContent('training')}
+        item={editingTraining}
+      />
+      <EditEventModal
+        visible={editingEvent !== null}
+        onClose={() => setEditingEvent(null)}
+        onSaved={() => fetchContent('events')}
+        item={editingEvent}
+      />
+      <EditInterviewModal
+        visible={editingInterview !== null}
+        onClose={() => setEditingInterview(null)}
+        onSaved={() => fetchContent('interviews')}
+        item={editingInterview}
+      />
+      <EditWebinarModal
+        visible={editingWebinar !== null}
+        onClose={() => setEditingWebinar(null)}
+        onSaved={() => fetchContent('webinars')}
+        item={editingWebinar}
+      />
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         {/* ── Stats ── */}
@@ -1142,11 +1703,83 @@ export default function AdminScreen() {
                   table={activeTable}
                   onToggle={() => fetchContent(activeTab)}
                   onDelete={() => fetchContent(activeTab)}
+                  onEdit={() => {
+                    console.log('[Admin] Edit button pressed for', activeTab, item.id);
+                    if (activeTab === 'training') {
+                      setEditingTraining(trainingPosts.find((t) => t.id === item.id) ?? null);
+                    } else if (activeTab === 'events') {
+                      setEditingEvent(events.find((e) => e.id === item.id) ?? null);
+                    } else if (activeTab === 'interviews') {
+                      setEditingInterview(interviews.find((i) => i.id === item.id) ?? null);
+                    } else {
+                      setEditingWebinar(webinars.find((w) => w.id === item.id) ?? null);
+                    }
+                  }}
                 />
                 {idx < activeItems.length - 1 && <View style={styles.separator} />}
               </View>
             ))
           )}
+        </View>
+
+        {/* ── Menu Configuration ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Menu size={18} color={COLORS.text} />
+            <Text style={styles.sectionTitle}>Menu Configuration</Text>
+            <AnimatedPressable
+              onPress={() => {
+                console.log('[Admin] Refresh menu config pressed');
+                fetchMenuConfig();
+              }}
+              style={styles.refreshButton}
+            >
+              <RefreshCw size={16} color={COLORS.primary} />
+            </AnimatedPressable>
+          </View>
+
+          {menuConfigLoading ? (
+            <>
+              <ListItemSkeleton />
+              <ListItemSkeleton />
+              <ListItemSkeleton />
+            </>
+          ) : menuConfig.length === 0 ? (
+            <Text style={styles.emptyText}>
+              No menu config found. Run the SQL migration to seed the table.
+            </Text>
+          ) : (
+            menuConfig.map((row, idx) => {
+              const badgeText = row.requires_paid ? 'Members Only' : 'Free';
+              const badgeBg = row.requires_paid ? COLORS.accentMuted : COLORS.primaryMuted;
+              const badgeColor = row.requires_paid ? COLORS.accent : COLORS.primary;
+              return (
+                <View key={row.id}>
+                  <View style={styles.menuConfigRow}>
+                    <View style={styles.menuConfigInfo}>
+                      <Text style={styles.menuConfigLabel}>{row.label}</Text>
+                      <View style={[styles.menuConfigBadge, { backgroundColor: badgeBg }]}>
+                        <Text style={[styles.menuConfigBadgeText, { color: badgeColor }]}>
+                          {badgeText}
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={row.is_enabled}
+                      onValueChange={(v) => handleMenuToggle(row, v)}
+                      trackColor={{ false: COLORS.border, true: COLORS.primary }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </View>
+                  {idx < menuConfig.length - 1 && <View style={styles.separator} />}
+                </View>
+              );
+            })
+          )}
+
+          <Text style={styles.menuConfigNote}>
+            Changes take effect immediately for all users.
+          </Text>
         </View>
 
         {/* ── Send Notification ── */}
@@ -1547,6 +2180,42 @@ const styles = StyleSheet.create({
   },
   iconBtnDanger: {
     backgroundColor: 'rgba(239,68,68,0.08)',
+  },
+  // Menu config
+  menuConfigRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 12,
+  },
+  menuConfigInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  menuConfigLabel: {
+    fontSize: 14,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.text,
+  },
+  menuConfigBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  menuConfigBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Outfit_600SemiBold',
+    letterSpacing: 0.3,
+  },
+  menuConfigNote: {
+    fontSize: 12,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textTertiary,
+    textAlign: 'center',
+    marginTop: 12,
+    fontStyle: 'italic',
   },
   // Notifications
   inputGroup: {
