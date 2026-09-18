@@ -151,7 +151,12 @@ interface QuickAccessRow {
 interface HomeSectionRow {
   id: string;
   title: string;
+  link_type: 'content' | 'external';
   content_type: 'events' | 'training' | 'interviews' | 'webinars';
+  external_url: string | null;
+  open_in_app: boolean;
+  preview_image_url: string | null;
+  preview_description: string | null;
   item_limit: number;
   sort_order: number;
   is_enabled: boolean;
@@ -1585,8 +1590,13 @@ function HomeSectionModal({
 }) {
   const isEdit = item !== null;
   const [title, setTitle] = useState('');
+  const [linkType, setLinkType] = useState<'content' | 'external'>('content');
   const [contentType, setContentType] = useState<HomeSectionRow['content_type']>('events');
   const [itemLimit, setItemLimit] = useState('5');
+  const [externalUrl, setExternalUrl] = useState('');
+  const [openInApp, setOpenInApp] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
+  const [previewDescription, setPreviewDescription] = useState('');
   const [requiresPaid, setRequiresPaid] = useState(false);
   const [isEnabled, setIsEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1595,14 +1605,24 @@ function HomeSectionModal({
     if (visible) {
       if (item) {
         setTitle(item.title);
+        setLinkType(item.link_type ?? 'content');
         setContentType(item.content_type);
         setItemLimit(String(item.item_limit));
+        setExternalUrl(item.external_url ?? '');
+        setOpenInApp(item.open_in_app ?? false);
+        setPreviewImageUrl(item.preview_image_url ?? '');
+        setPreviewDescription(item.preview_description ?? '');
         setRequiresPaid(item.requires_paid);
         setIsEnabled(item.is_enabled);
       } else {
         setTitle('');
+        setLinkType('content');
         setContentType('events');
         setItemLimit('5');
+        setExternalUrl('');
+        setOpenInApp(false);
+        setPreviewImageUrl('');
+        setPreviewDescription('');
         setRequiresPaid(false);
         setIsEnabled(true);
       }
@@ -1614,13 +1634,24 @@ function HomeSectionModal({
       Alert.alert('Validation', 'Title is required.');
       return;
     }
+    if (linkType === 'external') {
+      if (!externalUrl.trim() || !externalUrl.trim().startsWith('http')) {
+        Alert.alert('Validation', 'External URL is required and must start with http.');
+        return;
+      }
+    }
     const limit = Math.min(10, Math.max(1, parseInt(itemLimit, 10) || 5));
-    console.log('[Admin] Saving home section:', title, 'mode:', isEdit ? 'edit' : 'add');
+    console.log('[Admin] Saving home section:', title, 'link_type:', linkType, 'mode:', isEdit ? 'edit' : 'add');
     setSaving(true);
     const payload = {
       title: title.trim(),
-      content_type: contentType,
-      item_limit: limit,
+      link_type: linkType,
+      content_type: linkType === 'content' ? contentType : 'events',
+      item_limit: linkType === 'content' ? limit : 1,
+      external_url: linkType === 'external' ? externalUrl.trim() : null,
+      open_in_app: linkType === 'external' ? openInApp : false,
+      preview_image_url: linkType === 'external' ? (previewImageUrl.trim() || null) : null,
+      preview_description: linkType === 'external' ? (previewDescription.trim() || null) : null,
       requires_paid: requiresPaid,
       is_enabled: isEnabled,
     };
@@ -1655,20 +1686,21 @@ function HomeSectionModal({
         <ScrollView style={modalStyles.body} showsVerticalScrollIndicator={false}>
           <FormInput label="Title *" value={title} onChangeText={setTitle} placeholder="Section title" />
 
-          {/* Content Type */}
+          {/* Link Type Toggle */}
           <View style={formStyles.inputGroup}>
-            <Text style={formStyles.inputLabel}>Content Type</Text>
+            <Text style={formStyles.inputLabel}>Section Type</Text>
             <View style={menuItemModalStyles.pillsWrap}>
-              {CONTENT_TYPES.map((ct) => {
-                const isSelected = contentType === ct.value;
+              {(['content', 'external'] as const).map((lt) => {
+                const isSelected = linkType === lt;
+                const label = lt === 'content' ? 'Content' : 'External Link';
                 return (
                   <AnimatedPressable
-                    key={ct.value}
-                    onPress={() => { console.log('[Admin] Section content type selected:', ct.value); setContentType(ct.value); }}
+                    key={lt}
+                    onPress={() => { console.log('[Admin] Section link_type selected:', lt); setLinkType(lt); }}
                     style={[menuItemModalStyles.pill, isSelected && menuItemModalStyles.pillActive]}
                   >
                     <Text style={[menuItemModalStyles.pillText, isSelected && menuItemModalStyles.pillTextActive]}>
-                      {ct.label}
+                      {label}
                     </Text>
                   </AnimatedPressable>
                 );
@@ -1676,18 +1708,88 @@ function HomeSectionModal({
             </View>
           </View>
 
-          {/* Item Limit */}
-          <View style={formStyles.inputGroup}>
-            <Text style={formStyles.inputLabel}>Item Limit (1–10)</Text>
-            <TextInput
-              style={formStyles.textInput}
-              value={itemLimit}
-              onChangeText={setItemLimit}
-              placeholder="5"
-              placeholderTextColor={COLORS.textTertiary}
-              keyboardType="number-pad"
-            />
-          </View>
+          {linkType === 'content' ? (
+            <>
+              {/* Content Type */}
+              <View style={formStyles.inputGroup}>
+                <Text style={formStyles.inputLabel}>Content Type</Text>
+                <View style={menuItemModalStyles.pillsWrap}>
+                  {CONTENT_TYPES.map((ct) => {
+                    const isSelected = contentType === ct.value;
+                    return (
+                      <AnimatedPressable
+                        key={ct.value}
+                        onPress={() => { console.log('[Admin] Section content type selected:', ct.value); setContentType(ct.value); }}
+                        style={[menuItemModalStyles.pill, isSelected && menuItemModalStyles.pillActive]}
+                      >
+                        <Text style={[menuItemModalStyles.pillText, isSelected && menuItemModalStyles.pillTextActive]}>
+                          {ct.label}
+                        </Text>
+                      </AnimatedPressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Item Limit */}
+              <View style={formStyles.inputGroup}>
+                <Text style={formStyles.inputLabel}>Item Limit (1–10)</Text>
+                <TextInput
+                  style={formStyles.textInput}
+                  value={itemLimit}
+                  onChangeText={setItemLimit}
+                  placeholder="5"
+                  placeholderTextColor={COLORS.textTertiary}
+                  keyboardType="number-pad"
+                />
+              </View>
+            </>
+          ) : (
+            <>
+              {/* External URL */}
+              <View style={formStyles.inputGroup}>
+                <Text style={formStyles.inputLabel}>External URL *</Text>
+                <TextInput
+                  style={formStyles.textInput}
+                  value={externalUrl}
+                  onChangeText={setExternalUrl}
+                  placeholder="https://example.com"
+                  placeholderTextColor={COLORS.textTertiary}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                />
+              </View>
+
+              {/* Preview Image URL */}
+              <View style={formStyles.inputGroup}>
+                <Text style={formStyles.inputLabel}>Preview Image URL (optional)</Text>
+                <TextInput
+                  style={formStyles.textInput}
+                  value={previewImageUrl}
+                  onChangeText={setPreviewImageUrl}
+                  placeholder="https://example.com/image.jpg"
+                  placeholderTextColor={COLORS.textTertiary}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                />
+              </View>
+
+              {/* Preview Description */}
+              <View style={formStyles.inputGroup}>
+                <Text style={formStyles.inputLabel}>Preview Description (optional)</Text>
+                <TextInput
+                  style={[formStyles.textInput, { height: 72, textAlignVertical: 'top' }]}
+                  value={previewDescription}
+                  onChangeText={setPreviewDescription}
+                  placeholder="Short description shown on the card"
+                  placeholderTextColor={COLORS.textTertiary}
+                  multiline
+                />
+              </View>
+
+              <SwitchRow label="Open Inside App" value={openInApp} onValueChange={(v) => { console.log('[Admin] Section open_in_app →', v); setOpenInApp(v); }} />
+            </>
+          )}
 
           <SwitchRow label="Members Only" value={requiresPaid} onValueChange={(v) => { console.log('[Admin] Section requires_paid →', v); setRequiresPaid(v); }} />
           <SwitchRow label="Enabled" value={isEnabled} onValueChange={(v) => { console.log('[Admin] Section is_enabled →', v); setIsEnabled(v); }} />
@@ -2761,16 +2863,25 @@ export default function AdminScreen() {
                 webinars: { bg: 'rgba(245,158,11,0.1)', color: '#D97706' },
               };
               const ct = ctColors[row.content_type] ?? { bg: COLORS.primaryMuted, color: COLORS.primary };
+              const isExternal = row.link_type === 'external';
               return (
                 <View key={row.id}>
                   <View style={styles.menuConfigRow}>
                     <View style={[styles.menuConfigInfo, { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
                       <Text style={styles.menuConfigLabel} numberOfLines={1}>{row.title}</Text>
                       <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-                        <View style={[styles.menuConfigBadge, { backgroundColor: ct.bg }]}>
-                          <Text style={[styles.menuConfigBadgeText, { color: ct.color }]}>{row.content_type}</Text>
-                        </View>
-                        <Text style={styles.sectionItemLimit}>Limit: {row.item_limit}</Text>
+                        {isExternal ? (
+                          <View style={[styles.menuConfigBadge, { backgroundColor: 'rgba(245,158,11,0.15)' }]}>
+                            <Text style={[styles.menuConfigBadgeText, { color: '#D97706' }]}>External</Text>
+                          </View>
+                        ) : (
+                          <>
+                            <View style={[styles.menuConfigBadge, { backgroundColor: ct.bg }]}>
+                              <Text style={[styles.menuConfigBadgeText, { color: ct.color }]}>{row.content_type}</Text>
+                            </View>
+                            <Text style={styles.sectionItemLimit}>Limit: {row.item_limit}</Text>
+                          </>
+                        )}
                         {row.requires_paid ? (
                           <View style={[styles.menuConfigBadge, { backgroundColor: COLORS.accentMuted }]}>
                             <Text style={[styles.menuConfigBadgeText, { color: COLORS.accent }]}>Paid</Text>

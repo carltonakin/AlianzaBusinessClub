@@ -102,7 +102,12 @@ interface QuickAccessRow {
 interface HomeSectionRow {
   id: string;
   title: string;
+  link_type: 'content' | 'external';
   content_type: 'events' | 'training' | 'interviews' | 'webinars';
+  external_url: string | null;
+  open_in_app: boolean;
+  preview_image_url: string | null;
+  preview_description: string | null;
   item_limit: number;
   sort_order: number;
   is_enabled: boolean;
@@ -212,10 +217,14 @@ export default function HomeScreen() {
       console.log('[Home] Home sections fetched:', sections.length);
       setHomeSections(sections);
 
-      // Fetch content for each section
+      // Fetch content for each section (skip external link sections)
       const contentMap: Record<string, (Event | TrainingPost | Interview | Webinar)[]> = {};
       await Promise.all(
         sections.map(async (section) => {
+          if (section.link_type === 'external') {
+            contentMap[section.id] = [];
+            return;
+          }
           try {
             const content = await fetchSectionContent(section.content_type, section.item_limit);
             contentMap[section.id] = content;
@@ -419,7 +428,67 @@ export default function HomeScreen() {
     );
   };
 
+  const renderExternalSection = (section: HomeSectionRow) => {
+    const isLocked = section.requires_paid && !isPaid;
+    const hasImage = !!section.preview_image_url;
+
+    const handlePress = () => {
+      if (!section.external_url) return;
+      console.log('[Home] External section pressed:', section.title, 'url:', section.external_url, 'open_in_app:', section.open_in_app);
+      if (section.open_in_app) {
+        router.push({ pathname: '/(drawer)/webview', params: { url: section.external_url, title: section.title } } as any);
+      } else {
+        Linking.openURL(section.external_url);
+      }
+    };
+
+    return (
+      <View key={section.id} style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Globe size={16} color={COLORS.primary} />
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>{section.title}</Text>
+          </View>
+        </View>
+        {isLocked ? (
+          <View style={styles.lockedSectionCard}>
+            <Lock size={22} color={COLORS.textTertiary} />
+            <Text style={styles.lockedSectionText}>Upgrade to unlock</Text>
+          </View>
+        ) : (
+          <AnimatedPressable onPress={handlePress} style={styles.contentCard}>
+            {hasImage ? (
+              <Image source={resolveImageSource(section.preview_image_url)} style={styles.contentCardImage} resizeMode="cover" />
+            ) : (
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={[styles.contentCardImage, { alignItems: 'center', justifyContent: 'center' }]}
+              >
+                <Globe size={28} color="rgba(255,255,255,0.7)" />
+              </LinearGradient>
+            )}
+            <View style={[styles.contentCardBody, { justifyContent: 'space-between' }]}>
+              <View>
+                <Text style={styles.contentCardTitle} numberOfLines={2}>{section.title}</Text>
+                {section.preview_description ? (
+                  <Text style={styles.contentCardDesc} numberOfLines={2}>{section.preview_description}</Text>
+                ) : null}
+              </View>
+              <Text style={styles.externalVisitLabel}>
+                {section.open_in_app ? 'Open →' : 'Visit →'}
+              </Text>
+            </View>
+          </AnimatedPressable>
+        )}
+      </View>
+    );
+  };
+
   const renderSection = (section: HomeSectionRow) => {
+    if (section.link_type === 'external') {
+      return renderExternalSection(section);
+    }
+
     const isLocked = section.requires_paid && !isPaid;
     const items = sectionContent[section.id] ?? [];
     const seeAllRoute = SECTION_ROUTES[section.content_type] ?? '/(drawer)/home';
@@ -834,6 +903,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Outfit_400Regular',
     color: COLORS.textTertiary,
+  },
+  externalVisitLabel: {
+    fontSize: 13,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.primary,
+    textAlign: 'right',
   },
   bellButton: {
     padding: 4,

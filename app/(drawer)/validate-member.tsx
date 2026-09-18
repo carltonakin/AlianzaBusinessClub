@@ -100,7 +100,7 @@ export default function ValidateMemberScreen() {
             style={styles.textInput}
             value={input}
             onChangeText={handleInputChange}
-            placeholder="e.g. ABC-00001"
+            placeholder="e.g. ABCLUB-00001"
             placeholderTextColor={COLORS.textTertiary}
             autoCapitalize="characters"
             autoCorrect={false}
