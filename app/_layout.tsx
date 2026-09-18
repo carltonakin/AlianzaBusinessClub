@@ -90,6 +90,9 @@ function RootNavigator() {
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
+    const inConfirmScreen = segments[0] === 'confirm';
+    // Let the confirm screen handle its own redirect after OTP verification
+    if (inConfirmScreen) return;
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/sign-in');
     } else if (session && inAuthGroup) {
@@ -109,6 +112,7 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+      <Stack.Screen name="confirm" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
