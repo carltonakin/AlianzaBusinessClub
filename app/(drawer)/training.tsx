@@ -65,7 +65,7 @@ export default function TrainingScreen() {
   if (!hasAccess) {
     return (
       <View style={styles.container}>
-        <DrawerHeader title="Training" />
+        <DrawerHeader title="AB Club - Training" />
         <MembershipGate featureName="Training Library" />
       </View>
     );
@@ -106,7 +106,7 @@ export default function TrainingScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Training" />
+      <DrawerHeader title="AB Club - Training" />
 
       {/* Category Filter */}
       <ScrollView

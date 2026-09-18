@@ -121,7 +121,7 @@ export default function EventsScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Events" />
+      <DrawerHeader title="AB Club - Events" />
       {loading ? (
         <View style={styles.loadingContainer}>
           <CardSkeleton />

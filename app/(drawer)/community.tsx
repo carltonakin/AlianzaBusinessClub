@@ -166,7 +166,7 @@ export default function CommunityScreen() {
   if (!hasAccess) {
     return (
       <View style={styles.container}>
-        <DrawerHeader title="Community" />
+        <DrawerHeader title="AB Club - Community" />
         <MembershipGate featureName="Community Forum" />
       </View>
     );
@@ -236,7 +236,7 @@ export default function CommunityScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Community" rightElement={composeButton} />
+      <DrawerHeader title="AB Club - Community" rightElement={composeButton} />
 
       {loading ? (
         <View style={styles.loadingContainer}>

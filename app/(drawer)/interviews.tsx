@@ -68,7 +68,7 @@ export default function InterviewsScreen() {
   if (!hasAccess) {
     return (
       <View style={styles.container}>
-        <DrawerHeader title="Interviews" />
+        <DrawerHeader title="AB Club - Interviews" />
         <MembershipGate featureName="Expert Interviews" />
       </View>
     );
@@ -116,7 +116,7 @@ export default function InterviewsScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Interviews" />
+      <DrawerHeader title="AB Club - Interviews" />
       {loading ? (
         <View style={styles.loadingContainer}>
           <CardSkeleton />

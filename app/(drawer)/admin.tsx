@@ -1671,7 +1671,7 @@ export default function AdminScreen() {
   if (!isAdmin) {
     return (
       <View style={styles.container}>
-        <DrawerHeader title="Admin Panel" />
+        <DrawerHeader title="AB Club - Admin" />
         <View style={styles.accessDenied}>
           <Shield size={48} color={COLORS.danger} />
           <Text style={styles.accessDeniedTitle}>Access Denied</Text>
@@ -1755,7 +1755,7 @@ export default function AdminScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Admin Panel" />
+      <DrawerHeader title="AB Club - Admin" />
 
       {/* Add-item modals */}
       <AddTrainingModal

@@ -34,7 +34,7 @@ export default function StoreScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Store" />
+      <DrawerHeader title="AB Club - Store" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

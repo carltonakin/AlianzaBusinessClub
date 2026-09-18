@@ -67,7 +67,7 @@ export default function WebinarsScreen() {
   if (!hasAccess) {
     return (
       <View style={styles.container}>
-        <DrawerHeader title="Webinars" />
+        <DrawerHeader title="AB Club - Webinars" />
         <MembershipGate featureName="Live Webinars" />
       </View>
     );
@@ -175,7 +175,7 @@ export default function WebinarsScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Webinars" />
+      <DrawerHeader title="AB Club - Webinars" />
       {loading ? (
         <View style={styles.loadingContainer}>
           <CardSkeleton />

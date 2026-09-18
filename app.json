@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Business Alliance Club",
+    "name": "AB Club",
     "slug": "nexus-hub-app-mfwyzi",
     "owner": "alianzaempresarial",
     "version": "1.0.0",
@@ -17,7 +17,7 @@
       "bundleIdentifier": "com.alianzaempresarial.nexushub",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleDisplayName": "Business Alliance Club"
+        "CFBundleDisplayName": "AB Club"
       }
     },
     "android": {

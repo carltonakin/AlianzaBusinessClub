@@ -131,7 +131,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Profile" />
+      <DrawerHeader title="AB Club - Profile" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

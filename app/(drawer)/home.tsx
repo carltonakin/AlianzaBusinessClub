@@ -198,7 +198,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Alianza Business Club" rightElement={bellElement} />
+      <DrawerHeader title="AB Club - Home" rightElement={bellElement} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}

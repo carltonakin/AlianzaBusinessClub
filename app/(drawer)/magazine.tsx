@@ -39,7 +39,7 @@ export default function MagazineScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Magazine" />
+      <DrawerHeader title="AB Club - Magazine" />
       <View style={styles.webviewContainer}>
         {!error ? (
           <WebView

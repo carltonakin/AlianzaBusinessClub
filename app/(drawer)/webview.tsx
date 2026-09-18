@@ -37,7 +37,7 @@ export default function WebViewScreen() {
     setLoading(true);
   };
 
-  const screenTitle = title ?? 'Web';
+  const screenTitle = 'AB Club - ' + (title ?? 'Web');
 
   return (
     <View style={styles.container}>

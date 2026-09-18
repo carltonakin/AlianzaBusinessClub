@@ -80,7 +80,7 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
-      <DrawerHeader title="Notifications" />
+      <DrawerHeader title="AB Club - Notifications" />
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
