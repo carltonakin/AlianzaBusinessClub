@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  Linking,
 } from 'react-native';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter, usePathname } from 'expo-router';
@@ -23,6 +24,7 @@ import {
   Shield,
   LogOut,
   Lock,
+  ExternalLink,
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,6 +40,7 @@ interface NavItem {
   iconActive: React.ReactNode;
   requiresPaid?: boolean;
   requiresAdmin?: boolean;
+  externalUrl?: string | null;
 }
 
 interface MenuConfigRow {
@@ -47,6 +50,7 @@ interface MenuConfigRow {
   is_enabled: boolean;
   requires_paid: boolean;
   sort_order: number;
+  external_url: string | null;
 }
 
 // Map route → icon factory so we can build icons dynamically from menu_config
@@ -71,6 +75,9 @@ function getIconsForRoute(route: string, active: boolean): { icon: React.ReactNo
     case '/(drawer)/community':
       return { icon: <Users size={20} color={COLORS.textSecondary} />, iconActive: <Users size={20} color={activeColor} /> };
     default:
+      if (route.startsWith('external_')) {
+        return { icon: <ExternalLink size={20} color={COLORS.textSecondary} />, iconActive: <ExternalLink size={20} color={activeColor} /> };
+      }
       return { icon: <BookOpen size={20} color={COLORS.textSecondary} />, iconActive: <BookOpen size={20} color={activeColor} /> };
   }
 }
@@ -140,6 +147,7 @@ export function DrawerContent(props: any) {
         icon: icons.icon,
         iconActive: icons.iconActive,
         requiresPaid: false,
+        externalUrl: r.external_url,
       };
     });
 
@@ -151,6 +159,7 @@ export function DrawerContent(props: any) {
         icon: icons.icon,
         iconActive: icons.iconActive,
         requiresPaid: r.requires_paid,
+        externalUrl: r.external_url,
       };
     });
   } else {
@@ -180,9 +189,14 @@ export function DrawerContent(props: any) {
   };
 
   const handleNavPress = (item: NavItem) => {
-    console.log('[DrawerContent] Nav item pressed:', item.label, '→', item.route);
+    console.log('[DrawerContent] Nav item pressed:', item.label, '→', item.externalUrl ?? item.route);
     props.navigation.closeDrawer();
-    router.push(item.route as any);
+    if (item.externalUrl) {
+      console.log('[DrawerContent] Opening external URL:', item.externalUrl);
+      Linking.openURL(item.externalUrl);
+    } else {
+      router.push(item.route as any);
+    }
   };
 
   const handleSignOut = () => {

@@ -8,8 +8,12 @@
  *   label text NOT NULL,
  *   is_enabled boolean DEFAULT true NOT NULL,
  *   requires_paid boolean DEFAULT false NOT NULL,
- *   sort_order integer DEFAULT 0 NOT NULL
+ *   sort_order integer DEFAULT 0 NOT NULL,
+ *   external_url text DEFAULT NULL
  * );
+ *
+ * -- Add external_url column if upgrading from previous version:
+ * ALTER TABLE public.menu_config ADD COLUMN IF NOT EXISTS external_url text DEFAULT NULL;
  *
  * ALTER TABLE public.menu_config ENABLE ROW LEVEL SECURITY;
  *
@@ -69,6 +73,7 @@ import {
   ChevronUp,
   Pencil,
   Menu,
+  ExternalLink,
 } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
@@ -110,6 +115,7 @@ interface MenuConfigRow {
   is_enabled: boolean;
   requires_paid: boolean;
   sort_order: number;
+  external_url: string | null;
 }
 
 // ─── Add-item form state shapes ───────────────────────────────────────────────
@@ -1048,6 +1054,231 @@ function EditWebinarModal({
   );
 }
 
+// ─── MenuItemModal ────────────────────────────────────────────────────────────
+
+const INTERNAL_ROUTES: { label: string; route: string }[] = [
+  { label: 'Home', route: '/(drawer)/home' },
+  { label: 'Magazine', route: '/(drawer)/magazine' },
+  { label: 'Events', route: '/(drawer)/events' },
+  { label: 'Store', route: '/(drawer)/store' },
+  { label: 'Training', route: '/(drawer)/training' },
+  { label: 'Interviews', route: '/(drawer)/interviews' },
+  { label: 'Webinars', route: '/(drawer)/webinars' },
+  { label: 'Community', route: '/(drawer)/community' },
+];
+
+function MenuItemModal({
+  visible,
+  onClose,
+  onSaved,
+  item,
+  nextSortOrder,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  item: MenuConfigRow | null;
+  nextSortOrder: number;
+}) {
+  const isEdit = item !== null;
+
+  const [label, setLabel] = useState('');
+  const [linkType, setLinkType] = useState<'internal' | 'external'>('internal');
+  const [selectedRoute, setSelectedRoute] = useState('/(drawer)/home');
+  const [externalUrl, setExternalUrl] = useState('');
+  const [requiresPaid, setRequiresPaid] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      if (item) {
+        setLabel(item.label);
+        const isExternal = item.route.startsWith('external_') || !!item.external_url;
+        setLinkType(isExternal ? 'external' : 'internal');
+        setSelectedRoute(isExternal ? '/(drawer)/home' : item.route);
+        setExternalUrl(item.external_url ?? '');
+        setRequiresPaid(item.requires_paid);
+        setIsEnabled(item.is_enabled);
+      } else {
+        setLabel('');
+        setLinkType('internal');
+        setSelectedRoute('/(drawer)/home');
+        setExternalUrl('');
+        setRequiresPaid(false);
+        setIsEnabled(true);
+      }
+    }
+  }, [visible, item]);
+
+  const handleSave = async () => {
+    if (!label.trim()) {
+      Alert.alert('Validation', 'Label is required.');
+      return;
+    }
+    if (linkType === 'external' && !externalUrl.trim().startsWith('http')) {
+      Alert.alert('Validation', 'External URL must start with "http".');
+      return;
+    }
+
+    const route = linkType === 'external' ? `external_${Date.now()}` : selectedRoute;
+    const extUrl = linkType === 'external' ? externalUrl.trim() : null;
+
+    console.log('[Admin] Saving menu item:', label, 'mode:', isEdit ? 'edit' : 'add', 'route:', route);
+    setSaving(true);
+
+    let error: any = null;
+
+    if (isEdit && item) {
+      const result = await supabase
+        .from('menu_config')
+        .update({
+          label: label.trim(),
+          route,
+          external_url: extUrl,
+          requires_paid: requiresPaid,
+          is_enabled: isEnabled,
+        })
+        .eq('id', item.id);
+      error = result.error;
+    } else {
+      const result = await supabase.from('menu_config').insert({
+        label: label.trim(),
+        route,
+        external_url: extUrl,
+        requires_paid: requiresPaid,
+        is_enabled: isEnabled,
+        sort_order: nextSortOrder,
+      });
+      error = result.error;
+    }
+
+    setSaving(false);
+
+    if (error) {
+      console.error('[Admin] Error saving menu item:', error.message);
+      Alert.alert('Error', error.message);
+      return;
+    }
+
+    console.log('[Admin] Menu item saved successfully');
+    onSaved();
+    onClose();
+  };
+
+  const modalTitle = isEdit ? 'Edit Menu Item' : 'Add Menu Item';
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={modalStyles.container}>
+        <View style={modalStyles.header}>
+          <Text style={modalStyles.title}>{modalTitle}</Text>
+          <AnimatedPressable onPress={onClose} style={modalStyles.closeBtn}>
+            <X size={20} color={COLORS.text} />
+          </AnimatedPressable>
+        </View>
+        <ScrollView style={modalStyles.body} showsVerticalScrollIndicator={false}>
+          {/* Label */}
+          <FormInput label="Label *" value={label} onChangeText={setLabel} placeholder="Menu item label" />
+
+          {/* Link Type Toggle */}
+          <View style={formStyles.inputGroup}>
+            <Text style={formStyles.inputLabel}>Link Type</Text>
+            <View style={menuItemModalStyles.toggleRow}>
+              <AnimatedPressable
+                onPress={() => {
+                  console.log('[Admin] Menu item link type → internal');
+                  setLinkType('internal');
+                }}
+                style={[menuItemModalStyles.toggleBtn, linkType === 'internal' && menuItemModalStyles.toggleBtnActive]}
+              >
+                <Text style={[menuItemModalStyles.toggleBtnText, linkType === 'internal' && menuItemModalStyles.toggleBtnTextActive]}>
+                  Internal Screen
+                </Text>
+              </AnimatedPressable>
+              <AnimatedPressable
+                onPress={() => {
+                  console.log('[Admin] Menu item link type → external');
+                  setLinkType('external');
+                }}
+                style={[menuItemModalStyles.toggleBtn, linkType === 'external' && menuItemModalStyles.toggleBtnActive]}
+              >
+                <Text style={[menuItemModalStyles.toggleBtnText, linkType === 'external' && menuItemModalStyles.toggleBtnTextActive]}>
+                  External URL
+                </Text>
+              </AnimatedPressable>
+            </View>
+          </View>
+
+          {/* Internal route pills */}
+          {linkType === 'internal' && (
+            <View style={formStyles.inputGroup}>
+              <Text style={formStyles.inputLabel}>Screen</Text>
+              <View style={menuItemModalStyles.pillsWrap}>
+                {INTERNAL_ROUTES.map((r) => {
+                  const isSelected = selectedRoute === r.route;
+                  return (
+                    <AnimatedPressable
+                      key={r.route}
+                      onPress={() => {
+                        console.log('[Admin] Menu item route selected:', r.route);
+                        setSelectedRoute(r.route);
+                      }}
+                      style={[menuItemModalStyles.pill, isSelected && menuItemModalStyles.pillActive]}
+                    >
+                      <Text style={[menuItemModalStyles.pillText, isSelected && menuItemModalStyles.pillTextActive]}>
+                        {r.label}
+                      </Text>
+                    </AnimatedPressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* External URL input */}
+          {linkType === 'external' && (
+            <View style={formStyles.inputGroup}>
+              <Text style={formStyles.inputLabel}>URL</Text>
+              <TextInput
+                style={formStyles.textInput}
+                value={externalUrl}
+                onChangeText={setExternalUrl}
+                placeholder="https://"
+                placeholderTextColor={COLORS.textTertiary}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
+            </View>
+          )}
+
+          <SwitchRow label="Members Only" value={requiresPaid} onValueChange={(v) => {
+            console.log('[Admin] Menu item requires_paid →', v);
+            setRequiresPaid(v);
+          }} />
+          <SwitchRow label="Enabled" value={isEnabled} onValueChange={(v) => {
+            console.log('[Admin] Menu item is_enabled →', v);
+            setIsEnabled(v);
+          }} />
+        </ScrollView>
+        <View style={modalStyles.footer}>
+          <AnimatedPressable
+            onPress={handleSave}
+            disabled={saving}
+            style={[modalStyles.saveBtn, saving && modalStyles.saveBtnDisabled]}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={modalStyles.saveBtnText}>{isEdit ? 'Save Changes' : 'Add Menu Item'}</Text>
+            )}
+          </AnimatedPressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Content list rows ────────────────────────────────────────────────────────
 
 function ContentRow({
@@ -1186,6 +1417,8 @@ export default function AdminScreen() {
   // Menu config
   const [menuConfig, setMenuConfig] = useState<MenuConfigRow[]>([]);
   const [menuConfigLoading, setMenuConfigLoading] = useState(false);
+  const [showMenuItemModal, setShowMenuItemModal] = useState(false);
+  const [editingMenuItem, setEditingMenuItem] = useState<MenuConfigRow | null>(null);
 
   const isAdmin = profile?.role === 'admin';
 
@@ -1525,6 +1758,15 @@ export default function AdminScreen() {
         onSaved={() => fetchContent('webinars')}
       />
 
+      {/* Menu item modal */}
+      <MenuItemModal
+        visible={showMenuItemModal}
+        onClose={() => { setShowMenuItemModal(false); setEditingMenuItem(null); }}
+        onSaved={() => fetchMenuConfig()}
+        item={editingMenuItem}
+        nextSortOrder={menuConfig.length}
+      />
+
       {/* Edit modals */}
       <EditTrainingModal
         visible={editingTraining !== null}
@@ -1764,18 +2006,76 @@ export default function AdminScreen() {
                         </Text>
                       </View>
                     </View>
-                    <Switch
-                      value={row.is_enabled}
-                      onValueChange={(v) => handleMenuToggle(row, v)}
-                      trackColor={{ false: COLORS.border, true: COLORS.primary }}
-                      thumbColor="#FFFFFF"
-                    />
+                    <View style={styles.menuConfigActions}>
+                      <AnimatedPressable
+                        onPress={() => {
+                          console.log('[Admin] Edit menu item pressed:', row.label);
+                          setEditingMenuItem(row);
+                          setShowMenuItemModal(true);
+                        }}
+                        style={styles.iconBtn}
+                      >
+                        <Pencil size={15} color={COLORS.primary} />
+                      </AnimatedPressable>
+                      <AnimatedPressable
+                        onPress={() => {
+                          console.log('[Admin] Delete menu item pressed:', row.label);
+                          Alert.alert(
+                            'Delete Menu Item',
+                            `Delete "${row.label}" from the menu? This cannot be undone.`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: async () => {
+                                  console.log('[Admin] Confirming delete menu item:', row.id);
+                                  const { error } = await supabase
+                                    .from('menu_config')
+                                    .delete()
+                                    .eq('id', row.id);
+                                  if (error) {
+                                    console.error('[Admin] Delete menu item error:', error.message);
+                                    Alert.alert('Error', error.message);
+                                    return;
+                                  }
+                                  console.log('[Admin] Menu item deleted:', row.label);
+                                  fetchMenuConfig();
+                                },
+                              },
+                            ]
+                          );
+                        }}
+                        style={[styles.iconBtn, styles.iconBtnDanger]}
+                      >
+                        <Trash2 size={15} color={COLORS.danger} />
+                      </AnimatedPressable>
+                      <Switch
+                        value={row.is_enabled}
+                        onValueChange={(v) => handleMenuToggle(row, v)}
+                        trackColor={{ false: COLORS.border, true: COLORS.primary }}
+                        thumbColor="#FFFFFF"
+                      />
+                    </View>
                   </View>
                   {idx < menuConfig.length - 1 && <View style={styles.separator} />}
                 </View>
               );
             })
           )}
+
+          {/* Add Menu Item button */}
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[Admin] Add menu item pressed');
+              setEditingMenuItem(null);
+              setShowMenuItemModal(true);
+            }}
+            style={[styles.addBtn, { marginTop: 12, marginBottom: 0 }]}
+          >
+            <Plus size={16} color={COLORS.primary} />
+            <Text style={styles.addBtnText}>Add Menu Item</Text>
+          </AnimatedPressable>
 
           <Text style={styles.menuConfigNote}>
             Changes take effect immediately for all users.
@@ -2209,6 +2509,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_600SemiBold',
     letterSpacing: 0.3,
   },
+  menuConfigActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   menuConfigNote: {
     fontSize: 12,
     fontFamily: 'Outfit_400Regular',
@@ -2344,6 +2649,61 @@ const formStyles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Outfit_400Regular',
     color: COLORS.text,
+  },
+});
+
+const menuItemModalStyles = StyleSheet.create({
+  toggleRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: COLORS.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+  toggleBtnActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  toggleBtnText: {
+    fontSize: 13,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.textSecondary,
+  },
+  toggleBtnTextActive: {
+    color: '#FFFFFF',
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  pillsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: COLORS.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  pillActive: {
+    backgroundColor: COLORS.primaryMuted,
+    borderColor: COLORS.primary,
+  },
+  pillText: {
+    fontSize: 13,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.textSecondary,
+  },
+  pillTextActive: {
+    color: COLORS.primary,
+    fontFamily: 'Outfit_600SemiBold',
   },
 });
 
