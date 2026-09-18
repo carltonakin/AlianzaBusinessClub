@@ -22,6 +22,7 @@ import {
   Outfit_700Bold,
 } from '@expo-google-fonts/outfit';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { supabase } from '@/utils/supabase';
@@ -63,9 +64,10 @@ async function registerPushToken(userId: string) {
     }
 
     console.log('[Notifications] Getting Expo push token');
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: '2b5bc1c7-549b-42ce-8eae-c706e5cf84f4',
-    });
+    const isExpoGo = Constants.appOwnership === 'expo';
+    const tokenData = await Notifications.getExpoPushTokenAsync(
+      isExpoGo ? {} : { projectId: '2b5bc1c7-549b-42ce-8eae-c706e5cf84f4' }
+    );
     const token = tokenData.data;
     console.log('[Notifications] Push token obtained:', token);
 
