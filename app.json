@@ -18,7 +18,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDisplayName": "AB Club",
-        "NSUserNotificationUsageDescription": "AB Club sends you notifications about events, news, and updates from the community."
+        "NSLocalNotificationUsageDescription": "AB Club sends you notifications about events, news, and updates from the community.",
+        "NSRemoteNotificationUsageDescription": "AB Club sends you notifications about events, news, and updates from the community."
       }
     },
     "android": {
