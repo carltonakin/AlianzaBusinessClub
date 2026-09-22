@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Share,
+  Modal,
 } from 'react-native';
 import { User, Mail, Shield, LogOut, Edit3, Save, Trash2, Hash, CheckSquare } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
@@ -25,6 +26,9 @@ export default function ProfileScreen() {
   const [editName, setEditName] = useState(profile?.full_name || '');
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const initials = getInitials(profile?.full_name, profile?.email);
   const displayName = profile?.full_name || 'Member';
@@ -90,46 +94,31 @@ export default function ProfileScreen() {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account and all associated data. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Account',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Are you absolutely sure?',
-              'Type "DELETE" to confirm — your account will be permanently removed.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Yes, Delete',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      if (!profile?.id) return;
-                      const { error } = await supabase.rpc('delete_user_account');
-                      if (error) {
-                        Alert.alert('Error', 'Failed to delete account. Please contact support.');
-                        console.error('[Profile] Delete account error:', error.message);
-                        return;
-                      }
-                      await signOut();
-                      router.replace('/(auth)/sign-in');
-                    } catch (err) {
-                      console.error('[Profile] Delete account unexpected error:', err);
-                      Alert.alert('Error', 'Something went wrong. Please try again.');
-                    }
-                  },
-                },
-              ]
-            );
-          },
-        },
-      ]
-    );
+    console.log('[Profile] Delete account pressed — opening confirmation modal');
+    setDeleteConfirmText('');
+    setDeleteModalVisible(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    console.log('[Profile] Delete account confirmed — initiating deletion');
+    setDeleting(true);
+    try {
+      if (!profile?.id) return;
+      const { error } = await supabase.rpc('delete_user_account');
+      if (error) {
+        console.error('[Profile] Delete account error:', error.message);
+        Alert.alert('Error', 'Failed to delete account. Please contact support.');
+        return;
+      }
+      console.log('[Profile] Account deleted successfully — signing out');
+      await signOut();
+      router.replace('/(auth)/sign-in');
+    } catch (err) {
+      console.error('[Profile] Delete account unexpected error:', err);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleEditToggle = () => {
@@ -276,6 +265,63 @@ export default function ProfileScreen() {
           </AnimatedPressable>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={deleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!deleting) {
+            setDeleteModalVisible(false);
+            setDeleteConfirmText('');
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Delete Account</Text>
+            <Text style={styles.modalBody}>
+              {'This will permanently delete your account and all associated data. This action cannot be undone.\n\nType DELETE below to confirm.'}
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              value={deleteConfirmText}
+              onChangeText={setDeleteConfirmText}
+              placeholder="Type DELETE here"
+              placeholderTextColor={COLORS.textTertiary}
+              autoCapitalize="characters"
+              editable={!deleting}
+            />
+            <View style={styles.modalButtonRow}>
+              <AnimatedPressable
+                onPress={() => {
+                  console.log('[Profile] Delete modal cancelled');
+                  setDeleteModalVisible(false);
+                  setDeleteConfirmText('');
+                }}
+                disabled={deleting}
+                style={[styles.modalCancelButton, deleting && { opacity: 0.4 }]}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </AnimatedPressable>
+              <AnimatedPressable
+                onPress={handleConfirmDelete}
+                disabled={deleteConfirmText.trim() !== 'DELETE' || deleting}
+                style={[
+                  styles.modalDeleteButton,
+                  deleteConfirmText.trim() !== 'DELETE' && { opacity: 0.4 },
+                ]}
+              >
+                {deleting ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.modalDeleteText}>Delete Account</Text>
+                )}
+              </AnimatedPressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -516,5 +562,75 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Outfit_600SemiBold',
     color: COLORS.danger,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCard: {
+    width: '85%',
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'Outfit_700Bold',
+    color: '#EF4444',
+    marginBottom: 12,
+  },
+  modalBody: {
+    fontSize: 14,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textSecondary,
+    lineHeight: 22,
+  },
+  modalInput: {
+    marginTop: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.text,
+    backgroundColor: COLORS.surfaceSecondary,
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  modalCancelButton: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.text,
+  },
+  modalDeleteButton: {
+    flex: 1,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalDeleteText: {
+    fontSize: 15,
+    fontFamily: 'Outfit_600SemiBold',
+    color: '#FFFFFF',
   },
 });
