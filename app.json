@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Nexus Hub",
-    "slug": "nexus-hub",
+    "name": "Alianza Business Club",
+    "slug": "alianza-business-club",
     "owner": "alianzaempresarial",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,21 +14,20 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.alianzaempresarial.nexushub",
+      "bundleIdentifier": "com.alianzaempresarial.alianzabusinessclub",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleDisplayName": "AB Club",
-        "NSLocalNotificationUsageDescription": "AB Club sends you notifications about events, news, and updates from the community.",
-        "NSRemoteNotificationUsageDescription": "AB Club sends you notifications about events, news, and updates from the community."
+        "CFBundleDisplayName": "Alianza BC",
+        "NSLocalNotificationUsageDescription": "Alianza BC sends you notifications about events, news, and updates from the community.",
+        "NSRemoteNotificationUsageDescription": "Alianza BC sends you notifications about events, news, and updates from the community."
       }
     },
     "android": {
-      "displayName": "AB Club",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/app-icon-pcy.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.alianzaempresarial.nexushub"
+      "package": "com.alianzaempresarial.alianzabusinessclub"
     },
     "web": {
       "favicon": "./assets/images/newly.png",
@@ -47,7 +46,7 @@
         }
       ]
     ],
-    "scheme": "nexushub",
+    "scheme": "alianzabusinessclub",
     "experiments": {
       "typedRoutes": true
     },
