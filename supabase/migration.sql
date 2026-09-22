@@ -7,7 +7,8 @@ CREATE TABLE profiles (
   membership_tier text NOT NULL DEFAULT 'free' CHECK (membership_tier IN ('free', 'paid')),
   role text NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'admin')),
   created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
+  updated_at timestamptz DEFAULT now(),
+  membership_number text DEFAULT NULL
 );
 
 CREATE TABLE training_posts (
@@ -175,6 +176,7 @@ INSERT INTO webinars (title, description, thumbnail_url, webinar_date, webinar_u
 
 ALTER TABLE public.menu_config ADD COLUMN IF NOT EXISTS open_in_app boolean DEFAULT false NOT NULL;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS push_token text DEFAULT NULL;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS membership_number text DEFAULT NULL;
 
 CREATE OR REPLACE FUNCTION delete_user_account()
 RETURNS void
