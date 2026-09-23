@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Alianza Business Club",
-    "slug": "Alianza-Business-Club",
+    "name": "Nexus Hub",
+    "slug": "nexus-hub",
     "owner": "alianzaempresarial",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -46,7 +46,7 @@
         }
       ]
     ],
-    "scheme": "AlianzaBusinessClub",
+    "scheme": "nexushub",
     "experiments": {
       "typedRoutes": true
     },
