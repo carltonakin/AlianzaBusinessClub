@@ -35,7 +35,7 @@ export default function CommunityScreen() {
   const [newContent, setNewContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const hasAccess = true;
+  const hasAccess = profile?.membership_tier === 'paid';
 
   useEffect(() => {
     if (hasAccess) {

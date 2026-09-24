@@ -96,11 +96,11 @@ export default function SignUpScreen() {
         return;
       }
       if (data.user) {
-        console.log('[SignUp] User created:', data.user.id, 'Upserting profile with tier: paid');
+        console.log('[SignUp] User created:', data.user.id, 'Upserting profile with tier: free');
 
         await supabase
           .from('profiles')
-          .update({ membership_tier: 'paid', full_name: fullName.trim() })
+          .update({ membership_tier: 'free', full_name: fullName.trim() })
           .eq('id', data.user.id);
         console.log('[SignUp] Profile updated, showing inline success message');
         setSuccess(true);

@@ -26,12 +26,12 @@ function resolveImageSource(source: string | number | ImageSourcePropType | null
 }
 
 export default function WebinarsScreen() {
-  useAuth();
+  const { profile } = useAuth();
   const [webinars, setWebinars] = useState<Webinar[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const hasAccess = true;
+  const hasAccess = profile?.membership_tier === 'paid';
 
   useEffect(() => {
     if (hasAccess) fetchWebinars();

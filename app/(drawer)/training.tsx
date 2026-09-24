@@ -23,13 +23,13 @@ const CATEGORIES = ['All', 'Sales', 'Marketing', 'Social Media'];
 
 export default function TrainingScreen() {
   const router = useRouter();
-  useAuth();
+  const { profile } = useAuth();
   const [posts, setPosts] = useState<TrainingPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const hasAccess = true;
+  const hasAccess = profile?.membership_tier === 'paid';
 
   useEffect(() => {
     if (hasAccess) fetchPosts();
