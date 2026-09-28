@@ -5,7 +5,7 @@
     "owner": "alianzaempresarial",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/app-icon-pcy.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/app-icon-pcy.png",
