@@ -54,6 +54,9 @@
       "router": {},
       "supabaseUrl": "https://idijhtyaiaoxvjfhxqdj.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlkaWpodHlhaWFveHZqZmh4cWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NzQyMTQsImV4cCI6MjEwNTI1MDIxNH0.1PktspQfzZqt0e_UIlqTEGeolxB9dVfCtgEYaG7-k1w"
+    },
+    "notification": {
+      "icon": "./assets/notification-icon.png"
     }
   }
 }
