@@ -42,7 +42,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TextInput,
   Alert,
   ActivityIndicator,
@@ -52,6 +51,7 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   Shield,
@@ -2053,6 +2053,7 @@ function ContentRow({
 
 export default function AdminScreen() {
   const { profile } = useAuth();
+  const router = useRouter();
 
   // Core data
   const [members, setMembers] = useState<Profile[]>([]);
@@ -2062,6 +2063,9 @@ export default function AdminScreen() {
   // Analytics
   const [recentSignups, setRecentSignups] = useState<RecentSignup[]>([]);
   const [growth, setGrowth] = useState<GrowthData>({ thisWeek: 0, lastWeek: 0 });
+
+  // Members section
+  const [showRecentMembers, setShowRecentMembers] = useState(false);
 
   // Content
   const [activeTab, setActiveTab] = useState<ContentTab>('training');
@@ -2358,44 +2362,6 @@ export default function AdminScreen() {
     fetchContent(tab);
   };
 
-  // ── Toggle membership tier ───────────────────────────────────────────────────
-
-  const handleToggleTier = (member: Profile) => {
-    if (member.role === 'admin') return;
-    const newTier = member.membership_tier === 'free' ? 'paid' : 'free';
-    Alert.alert(
-      'Change Membership',
-      `Change ${member.full_name || member.email}'s tier from ${member.membership_tier} to ${newTier}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            console.log('[Admin] Toggling membership tier for', member.id, '→', newTier);
-            const { error } = await supabase
-              .from('profiles')
-              .update({ membership_tier: newTier })
-              .eq('id', member.id);
-            if (error) {
-              console.error('[Admin] Tier update error:', error.message);
-              Alert.alert('Error', error.message);
-              return;
-            }
-            console.log('[Admin] Membership tier updated successfully');
-            setMembers((prev) =>
-              prev.map((m) => (m.id === member.id ? { ...m, membership_tier: newTier } : m))
-            );
-            setStats((prev) => ({
-              ...prev,
-              paid: newTier === 'paid' ? prev.paid + 1 : prev.paid - 1,
-              free: newTier === 'free' ? prev.free + 1 : prev.free - 1,
-            }));
-          },
-        },
-      ]
-    );
-  };
-
   // ── Send notification ────────────────────────────────────────────────────────
 
   const handleSendNotification = async () => {
@@ -2443,45 +2409,6 @@ export default function AdminScreen() {
     );
   }
 
-  // ── Render helpers ───────────────────────────────────────────────────────────
-
-  const renderMember = ({ item }: { item: Profile }) => {
-    const initials = getInitials(item.full_name, item.email);
-    const displayName = item.full_name || item.email;
-    const membershipNumber = (item as any).membership_number as string | null;
-    return (
-      <View style={styles.memberRow}>
-        <View style={styles.memberAvatar}>
-          <Text style={styles.memberAvatarText}>{initials}</Text>
-        </View>
-        <View style={styles.memberInfo}>
-          <Text style={styles.memberName} numberOfLines={1}>{displayName}</Text>
-          <Text style={styles.memberEmail} numberOfLines={1}>{item.email}</Text>
-          {membershipNumber ? (
-            <Text style={styles.memberNumber} numberOfLines={1}>#{membershipNumber}</Text>
-          ) : null}
-        </View>
-        <View style={styles.memberBadges}>
-          <MembershipBadge tier={item.membership_tier} size="sm" />
-          {item.role === 'admin' ? (
-            <View style={styles.adminBadge}>
-              <Text style={styles.adminBadgeText}>ADMIN</Text>
-            </View>
-          ) : (
-            <AnimatedPressable
-              onPress={() => handleToggleTier(item)}
-              style={styles.tierToggleBtn}
-            >
-              <Text style={styles.tierToggleBtnText}>
-                {item.membership_tier === 'free' ? '→ Paid' : '→ Free'}
-              </Text>
-            </AnimatedPressable>
-          )}
-        </View>
-      </View>
-    );
-  };
-
   const TIER_OPTIONS: { label: string; value: TargetTier }[] = [
     { label: 'All', value: 'all' },
     { label: 'Free', value: 'free' },
@@ -2498,6 +2425,11 @@ export default function AdminScreen() {
   const growthDiff = growth.thisWeek - growth.lastWeek;
   const growthLabel = growthDiff > 0 ? `+${growthDiff} vs last week` : growthDiff < 0 ? `${growthDiff} vs last week` : 'Same as last week';
   const growthColor = growthDiff > 0 ? COLORS.success : growthDiff < 0 ? COLORS.danger : COLORS.textTertiary;
+
+  const oldestDate = members.length > 0 ? new Date(members[members.length - 1].created_at) : new Date();
+  const nowDate = new Date();
+  const monthsSinceFirst = Math.max(1, (nowDate.getFullYear() - oldestDate.getFullYear()) * 12 + (nowDate.getMonth() - oldestDate.getMonth()));
+  const avgPerMonth = Math.round(stats.total / monthsSinceFirst);
 
   const activeItems: { id: string; title: string; is_published: boolean }[] =
     activeTab === 'training'
@@ -2614,13 +2546,14 @@ export default function AdminScreen() {
             <Text style={styles.statNumber}>{stats.total}</Text>
             <Text style={styles.statLabel}>Total Members</Text>
           </View>
-          <View style={[styles.statCard, { borderLeftColor: COLORS.paid }]}>
-            <Text style={styles.statNumber}>{stats.paid}</Text>
-            <Text style={styles.statLabel}>Paid</Text>
+          <View style={[styles.statCard, { borderLeftColor: COLORS.success }]}>
+            <Text style={styles.statNumber}>{growth.thisWeek}</Text>
+            <Text style={styles.statLabel}>Growth</Text>
+            <Text style={[styles.statSubLabel, { color: growthColor }]}>{growthLabel}</Text>
           </View>
-          <View style={[styles.statCard, { borderLeftColor: COLORS.free }]}>
-            <Text style={styles.statNumber}>{stats.free}</Text>
-            <Text style={styles.statLabel}>Free</Text>
+          <View style={[styles.statCard, { borderLeftColor: COLORS.accent }]}>
+            <Text style={styles.statNumber}>{avgPerMonth}</Text>
+            <Text style={styles.statLabel}>Avg / Month</Text>
           </View>
         </View>
 
@@ -2681,21 +2614,61 @@ export default function AdminScreen() {
               <RefreshCw size={16} color={COLORS.primary} />
             </AnimatedPressable>
           </View>
-          {loading ? (
-            <>
-              <ListItemSkeleton />
-              <ListItemSkeleton />
-              <ListItemSkeleton />
-            </>
-          ) : (
-            <FlatList
-              data={members}
-              renderItem={renderMember}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-            />
+
+          {/* Recent Members button */}
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[Admin] Toggle recent members:', !showRecentMembers);
+              setShowRecentMembers((v) => !v);
+            }}
+            style={styles.addBtn}
+          >
+            <Users size={16} color={COLORS.primary} />
+            <Text style={styles.addBtnText}>
+              {showRecentMembers ? 'Hide Recent Members' : 'Recent Members'}
+            </Text>
+          </AnimatedPressable>
+
+          {/* Recent members list (last 5) */}
+          {showRecentMembers && (
+            loading ? (
+              <>
+                <ListItemSkeleton />
+                <ListItemSkeleton />
+              </>
+            ) : recentSignups.length === 0 ? (
+              <Text style={styles.emptyText}>No sign-ups yet.</Text>
+            ) : (
+              recentSignups.map((u, idx) => {
+                const name = u.full_name || u.email;
+                const dateJoined = formatDate(u.created_at);
+                return (
+                  <View key={u.id} style={[styles.signupRow, idx < recentSignups.length - 1 && styles.signupRowBorder]}>
+                    <View style={styles.signupAvatar}>
+                      <Text style={styles.signupAvatarText}>{getInitials(u.full_name, u.email)}</Text>
+                    </View>
+                    <View style={styles.signupInfo}>
+                      <Text style={styles.signupName} numberOfLines={1}>{name}</Text>
+                      <Text style={styles.signupEmail} numberOfLines={1}>{u.email}</Text>
+                    </View>
+                    <Text style={styles.signupDate}>{dateJoined}</Text>
+                  </View>
+                );
+              })
+            )
           )}
+
+          {/* View All Members button */}
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[Admin] View All Members pressed');
+              router.push('/(drawer)/admin-members' as any);
+            }}
+            style={[styles.addBtn, { marginTop: 8 }]}
+          >
+            <Users size={16} color={COLORS.primary} />
+            <Text style={styles.addBtnText}>View All Members</Text>
+          </AnimatedPressable>
         </View>
 
         {/* ── Content Management ── */}
@@ -3378,6 +3351,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Outfit_500Medium',
     color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  statSubLabel: {
+    fontSize: 9,
+    fontFamily: 'Outfit_400Regular',
     textAlign: 'center',
     marginTop: 2,
   },

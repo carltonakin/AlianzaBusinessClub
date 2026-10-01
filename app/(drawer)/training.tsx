@@ -13,7 +13,6 @@ import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { DrawerHeader } from '@/components/DrawerHeader';
-import { MembershipGate } from '@/components/MembershipGate';
 import { ContentCard } from '@/components/ContentCard';
 import { CardSkeleton } from '@/components/SkeletonLoader';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
@@ -29,11 +28,9 @@ export default function TrainingScreen() {
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const hasAccess = profile?.membership_tier === 'paid';
-
   useEffect(() => {
-    if (hasAccess) fetchPosts();
-  }, [hasAccess]);
+    fetchPosts();
+  }, []);
 
   const fetchPosts = async () => {
     console.log('[Training] Fetching training posts');
@@ -59,15 +56,6 @@ export default function TrainingScreen() {
       setLoading(false);
     }
   };
-
-  if (!hasAccess) {
-    return (
-      <View style={styles.container}>
-        <DrawerHeader title="AB Club - Training" />
-        <MembershipGate featureName="Training Library" />
-      </View>
-    );
-  }
 
   const filteredPosts = selectedCategory === 'All'
     ? posts

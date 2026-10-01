@@ -23,6 +23,7 @@ export default function DrawerLayout() {
       <Drawer.Screen name="community" />
       <Drawer.Screen name="profile" />
       <Drawer.Screen name="admin" />
+      <Drawer.Screen name="admin-members" options={{ drawerItemStyle: { display: 'none' }, headerShown: false }} />
       <Drawer.Screen name="webview" />
       <Drawer.Screen name="notifications" />
       <Drawer.Screen name="validate-member" />

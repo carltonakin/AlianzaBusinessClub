@@ -11,9 +11,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Video, RefreshCw, Calendar, Play } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
-import { useAuth } from '@/contexts/AuthContext';
 import { DrawerHeader } from '@/components/DrawerHeader';
-import { MembershipGate } from '@/components/MembershipGate';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { CardSkeleton } from '@/components/SkeletonLoader';
 import { Webinar } from '@/types';
@@ -26,16 +24,13 @@ function resolveImageSource(source: string | number | ImageSourcePropType | null
 }
 
 export default function WebinarsScreen() {
-  const { profile } = useAuth();
   const [webinars, setWebinars] = useState<Webinar[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const hasAccess = profile?.membership_tier === 'paid';
-
   useEffect(() => {
-    if (hasAccess) fetchWebinars();
-  }, [hasAccess]);
+    fetchWebinars();
+  }, []);
 
   const fetchWebinars = async () => {
     console.log('[Webinars] Fetching webinars');
@@ -61,15 +56,6 @@ export default function WebinarsScreen() {
       setLoading(false);
     }
   };
-
-  if (!hasAccess) {
-    return (
-      <View style={styles.container}>
-        <DrawerHeader title="AB Club - Webinars" />
-        <MembershipGate featureName="Live Webinars" />
-      </View>
-    );
-  }
 
   const upcoming = webinars.filter((w) => !w.is_recorded);
   const recorded = webinars.filter((w) => w.is_recorded);

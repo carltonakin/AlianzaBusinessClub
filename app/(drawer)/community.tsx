@@ -17,7 +17,6 @@ import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { DrawerHeader } from '@/components/DrawerHeader';
-import { MembershipGate } from '@/components/MembershipGate';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { ListItemSkeleton } from '@/components/SkeletonLoader';
 import { CommunityPost } from '@/types';
@@ -35,15 +34,11 @@ export default function CommunityScreen() {
   const [newContent, setNewContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const hasAccess = profile?.membership_tier === 'paid';
-
   useEffect(() => {
-    if (hasAccess) {
-      fetchPosts();
-      fetchLikedPosts();
-    }
+    fetchPosts();
+    fetchLikedPosts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasAccess]);
+  }, []);
 
   const fetchPosts = async () => {
     console.log('[Community] Fetching community posts');
@@ -160,15 +155,6 @@ export default function CommunityScreen() {
       setSubmitting(false);
     }
   };
-
-  if (!hasAccess) {
-    return (
-      <View style={styles.container}>
-        <DrawerHeader title="AB Club - Community" />
-        <MembershipGate featureName="Community Forum" />
-      </View>
-    );
-  }
 
   const composeButton = (
     <Pressable

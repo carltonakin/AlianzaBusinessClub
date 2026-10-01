@@ -11,9 +11,7 @@ import { useRouter } from 'expo-router';
 import { Mic, RefreshCw } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
-import { useAuth } from '@/contexts/AuthContext';
 import { DrawerHeader } from '@/components/DrawerHeader';
-import { MembershipGate } from '@/components/MembershipGate';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { CardSkeleton } from '@/components/SkeletonLoader';
 import { Interview } from '@/types';
@@ -27,16 +25,13 @@ function resolveImageSource(source: string | number | ImageSourcePropType | null
 
 export default function InterviewsScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const hasAccess = profile?.membership_tier === 'paid';
-
   useEffect(() => {
-    if (hasAccess) fetchInterviews();
-  }, [hasAccess]);
+    fetchInterviews();
+  }, []);
 
   const fetchInterviews = async () => {
     console.log('[Interviews] Fetching interviews');
@@ -62,15 +57,6 @@ export default function InterviewsScreen() {
       setLoading(false);
     }
   };
-
-  if (!hasAccess) {
-    return (
-      <View style={styles.container}>
-        <DrawerHeader title="AB Club - Interviews" />
-        <MembershipGate featureName="Expert Interviews" />
-      </View>
-    );
-  }
 
   const handleInterviewPress = (item: Interview) => {
     console.log('[Interviews] Interview pressed:', item.title, 'id:', item.id);
