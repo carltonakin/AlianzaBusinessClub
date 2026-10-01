@@ -132,17 +132,11 @@ export default function AdminMembersScreen() {
               // Optimistically remove from local state immediately
               setMembers((prev) => prev.filter((m) => m.id !== member.id));
 
-              const { data: { session } } = await supabase.auth.getSession();
-              const response = await supabase.functions.invoke('delete-user', {
-                body: { userId: member.id },
-                headers: session?.access_token
-                  ? { Authorization: `Bearer ${session.access_token}` }
-                  : {},
-              });
+              const { error } = await supabase.rpc('delete_user_by_id', { user_id: member.id });
 
-              if (response.error) {
-                console.error('[AdminMembers] Delete error:', response.error.message);
-                Alert.alert('Error', response.error.message || 'Failed to delete user.');
+              if (error) {
+                console.error('[AdminMembers] Delete error:', error.message);
+                Alert.alert('Error', error.message || 'Failed to delete user.');
                 // Revert optimistic update on error
                 fetchMembers();
                 return;
