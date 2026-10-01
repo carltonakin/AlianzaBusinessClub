@@ -9,8 +9,11 @@ import {
   ActivityIndicator,
   Share,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
 } from 'react-native';
-import { User, Mail, Shield, LogOut, Edit3, Save, Trash2, Hash, CheckSquare, KeyRound } from 'lucide-react-native';
+import { User, Mail, Shield, LogOut, Edit3, Save, Trash2, Hash, CheckSquare, KeyRound, Eye, EyeOff, X, Lock } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,7 +32,14 @@ export default function ProfileScreen() {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
-  const [sendingReset, setSendingReset] = useState(false);
+  const [changePasswordVisible, setChangePasswordVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   const initials = getInitials(profile?.full_name, profile?.email);
   const displayName = profile?.full_name || 'Member';
@@ -122,22 +132,47 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!profile?.email) return;
-    console.log('[Profile] Reset password pressed for:', profile.email);
-    setSendingReset(true);
+  const handleChangePassword = async () => {
+    if (!newPassword.trim() || !confirmPassword.trim()) {
+      Alert.alert('Error', 'Please fill in all fields.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters.');
+      return;
+    }
+    console.log('[Profile] Change password pressed');
+    setChangingPassword(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(profile.email);
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: profile?.email ?? '',
+        password: currentPassword,
+      });
+      if (signInError) {
+        Alert.alert('Error', 'Current password is incorrect.');
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
-        console.error('[Profile] Reset password error:', error.message);
+        console.error('[Profile] Change password error:', error.message);
         Alert.alert('Error', error.message);
         return;
       }
-      Alert.alert('Email Sent', `A password reset link has been sent to ${profile.email}.`);
+      console.log('[Profile] Password changed successfully');
+      setChangePasswordVisible(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      Alert.alert('Success', 'Your password has been updated.');
     } catch (err) {
-      console.error('[Profile] Unexpected reset error:', err);
+      console.error('[Profile] Unexpected change password error:', err);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
-      setSendingReset(false);
+      setChangingPassword(false);
     }
   };
 
@@ -280,18 +315,17 @@ export default function ProfileScreen() {
             <Text style={styles.signOutText}>Sign Out</Text>
           </AnimatedPressable>
           <AnimatedPressable
-            onPress={handleResetPassword}
-            disabled={sendingReset}
-            style={[styles.resetPasswordButton, sendingReset && { opacity: 0.5 }]}
+            onPress={() => {
+              console.log('[Profile] Change password button pressed');
+              setCurrentPassword('');
+              setNewPassword('');
+              setConfirmPassword('');
+              setChangePasswordVisible(true);
+            }}
+            style={styles.resetPasswordButton}
           >
-            {sendingReset ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
-            ) : (
-              <>
-                <KeyRound size={18} color={COLORS.primary} />
-                <Text style={styles.resetPasswordText}>Reset Password</Text>
-              </>
-            )}
+            <KeyRound size={18} color={COLORS.primary} />
+            <Text style={styles.resetPasswordText}>Change Password</Text>
           </AnimatedPressable>
           <AnimatedPressable onPress={handleDeleteAccount} style={styles.deleteButton}>
             <Trash2 size={18} color={COLORS.danger} />
@@ -299,6 +333,114 @@ export default function ProfileScreen() {
           </AnimatedPressable>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={changePasswordVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          if (!changingPassword) setChangePasswordVisible(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          style={styles.changePwContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.changePwHeader}>
+            <Text style={styles.changePwTitle}>Change Password</Text>
+            <AnimatedPressable
+              onPress={() => setChangePasswordVisible(false)}
+              disabled={changingPassword}
+              style={styles.changePwCloseBtn}
+            >
+              <X size={20} color={COLORS.text} />
+            </AnimatedPressable>
+          </View>
+
+          <ScrollView style={styles.changePwBody} keyboardShouldPersistTaps="handled">
+            <View style={styles.changePwField}>
+              <Text style={styles.changePwLabel}>Current Password</Text>
+              <View style={styles.changePwInputWrapper}>
+                <Lock size={16} color={COLORS.textTertiary} />
+                <TextInput
+                  style={styles.changePwInput}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  placeholder="Enter current password"
+                  placeholderTextColor={COLORS.textTertiary}
+                  secureTextEntry={!showCurrentPw}
+                  autoCapitalize="none"
+                  editable={!changingPassword}
+                />
+                <Pressable onPress={() => setShowCurrentPw((v) => !v)} hitSlop={8}>
+                  {showCurrentPw ? <EyeOff size={16} color={COLORS.textTertiary} /> : <Eye size={16} color={COLORS.textTertiary} />}
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={styles.changePwField}>
+              <Text style={styles.changePwLabel}>New Password</Text>
+              <View style={styles.changePwInputWrapper}>
+                <Lock size={16} color={COLORS.textTertiary} />
+                <TextInput
+                  style={styles.changePwInput}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="At least 6 characters"
+                  placeholderTextColor={COLORS.textTertiary}
+                  secureTextEntry={!showNewPw}
+                  autoCapitalize="none"
+                  editable={!changingPassword}
+                />
+                <Pressable onPress={() => setShowNewPw((v) => !v)} hitSlop={8}>
+                  {showNewPw ? <EyeOff size={16} color={COLORS.textTertiary} /> : <Eye size={16} color={COLORS.textTertiary} />}
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={styles.changePwField}>
+              <Text style={styles.changePwLabel}>Confirm New Password</Text>
+              <View style={styles.changePwInputWrapper}>
+                <Lock size={16} color={COLORS.textTertiary} />
+                <TextInput
+                  style={styles.changePwInput}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Repeat new password"
+                  placeholderTextColor={COLORS.textTertiary}
+                  secureTextEntry={!showConfirmPw}
+                  autoCapitalize="none"
+                  editable={!changingPassword}
+                />
+                <Pressable onPress={() => setShowConfirmPw((v) => !v)} hitSlop={8}>
+                  {showConfirmPw ? <EyeOff size={16} color={COLORS.textTertiary} /> : <Eye size={16} color={COLORS.textTertiary} />}
+                </Pressable>
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={styles.changePwFooter}>
+            <AnimatedPressable
+              onPress={() => setChangePasswordVisible(false)}
+              disabled={changingPassword}
+              style={styles.changePwCancelBtn}
+            >
+              <Text style={styles.changePwCancelText}>Cancel</Text>
+            </AnimatedPressable>
+            <AnimatedPressable
+              onPress={handleChangePassword}
+              disabled={changingPassword}
+              style={[styles.changePwSaveBtn, changingPassword && { opacity: 0.5 }]}
+            >
+              {changingPassword ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.changePwSaveText}>Update Password</Text>
+              )}
+            </AnimatedPressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal
         visible={deleteModalVisible}
@@ -680,6 +822,100 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalDeleteText: {
+    fontSize: 15,
+    fontFamily: 'Outfit_600SemiBold',
+    color: '#FFFFFF',
+  },
+  changePwContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  changePwHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  changePwTitle: {
+    fontSize: 18,
+    fontFamily: 'Outfit_700Bold',
+    color: COLORS.text,
+  },
+  changePwCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: COLORS.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  changePwBody: {
+    flex: 1,
+    padding: 20,
+  },
+  changePwField: {
+    marginBottom: 18,
+  },
+  changePwLabel: {
+    fontSize: 13,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  changePwInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  changePwInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.text,
+  },
+  changePwFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  changePwCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+  changePwCancelText: {
+    fontSize: 15,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.textSecondary,
+  },
+  changePwSaveBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  changePwSaveText: {
     fontSize: 15,
     fontFamily: 'Outfit_600SemiBold',
     color: '#FFFFFF',

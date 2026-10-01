@@ -167,6 +167,17 @@ export default function SignInScreen() {
               </View>
             </View>
 
+            <Pressable
+              onPress={() => {
+                console.log('[SignIn] Forgot password pressed');
+                router.push('/(auth)/forgot-password');
+              }}
+              style={styles.forgotPasswordRow}
+              hitSlop={8}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </Pressable>
+
             <AnimatedPressable
               onPress={handleSignIn}
               disabled={loading}
@@ -342,6 +353,16 @@ const styles = StyleSheet.create({
   signUpLink: {
     fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.primary,
+  },
+  forgotPasswordRow: {
+    alignSelf: 'flex-end',
+    marginBottom: 8,
+    marginTop: -8,
+  },
+  forgotPasswordText: {
+    fontSize: 13,
+    fontFamily: 'Outfit_500Medium',
     color: COLORS.primary,
   },
 });
