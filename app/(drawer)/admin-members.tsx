@@ -17,7 +17,6 @@ import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { DrawerHeader } from '@/components/DrawerHeader';
-import { MembershipBadge } from '@/components/MembershipBadge';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { ListItemSkeleton } from '@/components/SkeletonLoader';
 import { getInitials } from '@/utils/helpers';
@@ -35,7 +34,6 @@ interface MemberProfile {
 interface EditForm {
   full_name: string;
   email: string;
-  membership_tier: 'free' | 'paid';
   role: string;
 }
 
@@ -45,8 +43,9 @@ export default function AdminMembersScreen() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingMember, setEditingMember] = useState<MemberProfile | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ full_name: '', email: '', membership_tier: 'free', role: 'member' });
+  const [editForm, setEditForm] = useState<EditForm>({ full_name: '', email: '', role: 'member' });
   const [saving, setSaving] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   const isAdmin = profile?.role === 'admin';
 
@@ -80,7 +79,6 @@ export default function AdminMembersScreen() {
     setEditForm({
       full_name: member.full_name ?? '',
       email: member.email,
-      membership_tier: member.membership_tier,
       role: member.role,
     });
     setEditingMember(member);
@@ -96,7 +94,6 @@ export default function AdminMembersScreen() {
         .update({
           full_name: editForm.full_name.trim() || null,
           email: editForm.email.trim(),
-          membership_tier: editForm.membership_tier,
           role: editForm.role,
         })
         .eq('id', editingMember.id);
@@ -112,6 +109,24 @@ export default function AdminMembersScreen() {
       console.error('[AdminMembers] Unexpected save error:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResetPassword = async (email: string) => {
+    console.log('[AdminMembers] Reset password pressed for:', email);
+    setSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) {
+        console.error('[AdminMembers] Reset password error:', error.message);
+        Alert.alert('Error', error.message);
+        return;
+      }
+      Alert.alert('Email Sent', `A password reset link has been sent to ${email}.`);
+    } catch (err) {
+      console.error('[AdminMembers] Unexpected reset error:', err);
+    } finally {
+      setSendingReset(false);
     }
   };
 
@@ -193,7 +208,6 @@ export default function AdminMembersScreen() {
           <Text style={styles.memberEmail} numberOfLines={1}>{item.email}</Text>
         </View>
         <View style={styles.memberActions}>
-          <MembershipBadge tier={item.membership_tier} size="sm" />
           {item.role === 'admin' && (
             <View style={styles.adminRoleBadge}>
               <Text style={styles.adminRoleBadgeText}>ADMIN</Text>
@@ -325,35 +339,6 @@ export default function AdminMembersScreen() {
               />
             </View>
 
-            {/* Membership Tier */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Membership Tier</Text>
-              <View style={styles.tierRow}>
-                <AnimatedPressable
-                  onPress={() => {
-                    console.log('[AdminMembers] Tier selected: free');
-                    setEditForm((f) => ({ ...f, membership_tier: 'free' }));
-                  }}
-                  style={[styles.tierBtn, editForm.membership_tier === 'free' && styles.tierBtnActive]}
-                >
-                  <Text style={[styles.tierBtnText, editForm.membership_tier === 'free' && styles.tierBtnTextActive]}>
-                    Free
-                  </Text>
-                </AnimatedPressable>
-                <AnimatedPressable
-                  onPress={() => {
-                    console.log('[AdminMembers] Tier selected: paid');
-                    setEditForm((f) => ({ ...f, membership_tier: 'paid' }));
-                  }}
-                  style={[styles.tierBtn, editForm.membership_tier === 'paid' && styles.tierBtnActivePaid]}
-                >
-                  <Text style={[styles.tierBtnText, editForm.membership_tier === 'paid' && styles.tierBtnTextActive]}>
-                    Paid
-                  </Text>
-                </AnimatedPressable>
-              </View>
-            </View>
-
             {/* Role */}
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Role</Text>
@@ -388,6 +373,22 @@ export default function AdminMembersScreen() {
                   </Text>
                 </View>
               )}
+            </View>
+
+            {/* Reset Password */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Password</Text>
+              <AnimatedPressable
+                onPress={() => editingMember && handleResetPassword(editingMember.email)}
+                disabled={sendingReset}
+                style={[styles.resetPasswordBtn, sendingReset && { opacity: 0.5 }]}
+              >
+                {sendingReset ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <Text style={styles.resetPasswordBtnText}>Send Password Reset Email</Text>
+                )}
+              </AnimatedPressable>
             </View>
           </ScrollView>
 
@@ -689,5 +690,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_700Bold',
     color: COLORS.danger,
     letterSpacing: 0.5,
+  },
+  resetPasswordBtn: {
+    backgroundColor: COLORS.primaryMuted,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.primary + '33',
+  },
+  resetPasswordBtnText: {
+    fontSize: 14,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.primary,
   },
 });

@@ -10,7 +10,7 @@ import {
   Share,
   Modal,
 } from 'react-native';
-import { User, Mail, Shield, LogOut, Edit3, Save, Trash2, Hash, CheckSquare } from 'lucide-react-native';
+import { User, Mail, Shield, LogOut, Edit3, Save, Trash2, Hash, CheckSquare, KeyRound } from 'lucide-react-native';
 import { supabase } from '@/utils/supabase';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +29,7 @@ export default function ProfileScreen() {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   const initials = getInitials(profile?.full_name, profile?.email);
   const displayName = profile?.full_name || 'Member';
@@ -118,6 +119,25 @@ export default function ProfileScreen() {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!profile?.email) return;
+    console.log('[Profile] Reset password pressed for:', profile.email);
+    setSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(profile.email);
+      if (error) {
+        console.error('[Profile] Reset password error:', error.message);
+        Alert.alert('Error', error.message);
+        return;
+      }
+      Alert.alert('Email Sent', `A password reset link has been sent to ${profile.email}.`);
+    } catch (err) {
+      console.error('[Profile] Unexpected reset error:', err);
+    } finally {
+      setSendingReset(false);
     }
   };
 
@@ -258,6 +278,20 @@ export default function ProfileScreen() {
           <AnimatedPressable onPress={handleSignOut} style={styles.signOutButton}>
             <LogOut size={18} color={COLORS.danger} />
             <Text style={styles.signOutText}>Sign Out</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            onPress={handleResetPassword}
+            disabled={sendingReset}
+            style={[styles.resetPasswordButton, sendingReset && { opacity: 0.5 }]}
+          >
+            {sendingReset ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <>
+                <KeyRound size={18} color={COLORS.primary} />
+                <Text style={styles.resetPasswordText}>Reset Password</Text>
+              </>
+            )}
           </AnimatedPressable>
           <AnimatedPressable onPress={handleDeleteAccount} style={styles.deleteButton}>
             <Trash2 size={18} color={COLORS.danger} />
@@ -562,6 +596,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Outfit_600SemiBold',
     color: COLORS.danger,
+  },
+  resetPasswordButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: COLORS.primaryMuted,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '33',
+    marginTop: 10,
+  },
+  resetPasswordText: {
+    fontSize: 15,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.primary,
   },
   modalOverlay: {
     flex: 1,
