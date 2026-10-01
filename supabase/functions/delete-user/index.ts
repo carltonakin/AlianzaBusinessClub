@@ -37,9 +37,18 @@ serve(async (req) => {
       { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
 
+    const { data: { user: callerUser }, error: callerError } = await anonClient.auth.getUser();
+    if (callerError || !callerUser) {
+      return new Response(
+        JSON.stringify({ error: 'Could not verify caller identity' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data: callerProfile, error: profileError } = await anonClient
       .from('profiles')
       .select('role')
+      .eq('id', callerUser.id)
       .single();
 
     if (profileError || !callerProfile) {
