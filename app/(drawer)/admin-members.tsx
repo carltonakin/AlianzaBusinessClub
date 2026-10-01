@@ -36,6 +36,7 @@ interface EditForm {
   full_name: string;
   email: string;
   membership_tier: 'free' | 'paid';
+  role: string;
 }
 
 export default function AdminMembersScreen() {
@@ -44,7 +45,7 @@ export default function AdminMembersScreen() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingMember, setEditingMember] = useState<MemberProfile | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ full_name: '', email: '', membership_tier: 'free' });
+  const [editForm, setEditForm] = useState<EditForm>({ full_name: '', email: '', membership_tier: 'free', role: 'member' });
   const [saving, setSaving] = useState(false);
 
   const isAdmin = profile?.role === 'admin';
@@ -80,6 +81,7 @@ export default function AdminMembersScreen() {
       full_name: member.full_name ?? '',
       email: member.email,
       membership_tier: member.membership_tier,
+      role: member.role,
     });
     setEditingMember(member);
   };
@@ -95,6 +97,7 @@ export default function AdminMembersScreen() {
           full_name: editForm.full_name.trim() || null,
           email: editForm.email.trim(),
           membership_tier: editForm.membership_tier,
+          role: editForm.role,
         })
         .eq('id', editingMember.id);
       if (error) {
@@ -125,17 +128,34 @@ export default function AdminMembersScreen() {
           style: 'destructive',
           onPress: async () => {
             console.log('[AdminMembers] Confirming delete for member:', member.id);
-            const { error } = await supabase
-              .from('profiles')
-              .delete()
-              .eq('id', member.id);
-            if (error) {
-              console.error('[AdminMembers] Delete error:', error.message);
-              Alert.alert('Error', error.message);
-              return;
+            try {
+              // Optimistically remove from local state immediately
+              setMembers((prev) => prev.filter((m) => m.id !== member.id));
+
+              const { data: { session } } = await supabase.auth.getSession();
+              const response = await supabase.functions.invoke('delete-user', {
+                body: { userId: member.id },
+                headers: session?.access_token
+                  ? { Authorization: `Bearer ${session.access_token}` }
+                  : {},
+              });
+
+              if (response.error) {
+                console.error('[AdminMembers] Delete error:', response.error.message);
+                Alert.alert('Error', response.error.message || 'Failed to delete user.');
+                // Revert optimistic update on error
+                fetchMembers();
+                return;
+              }
+
+              console.log('[AdminMembers] Member deleted successfully:', member.id);
+              // Background refresh to confirm
+              fetchMembers();
+            } catch (err: any) {
+              console.error('[AdminMembers] Unexpected delete error:', err);
+              Alert.alert('Error', 'Failed to delete user.');
+              fetchMembers();
             }
-            console.log('[AdminMembers] Member deleted:', member.id);
-            fetchMembers();
           },
         },
       ]
@@ -180,6 +200,11 @@ export default function AdminMembersScreen() {
         </View>
         <View style={styles.memberActions}>
           <MembershipBadge tier={item.membership_tier} size="sm" />
+          {item.role === 'admin' && (
+            <View style={styles.adminRoleBadge}>
+              <Text style={styles.adminRoleBadgeText}>ADMIN</Text>
+            </View>
+          )}
           <AnimatedPressable
             onPress={() => handleEdit(item)}
             style={styles.iconBtn}
@@ -333,6 +358,42 @@ export default function AdminMembersScreen() {
                   </Text>
                 </AnimatedPressable>
               </View>
+            </View>
+
+            {/* Role */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Role</Text>
+              <View style={styles.tierRow}>
+                <AnimatedPressable
+                  onPress={() => {
+                    console.log('[AdminMembers] Role selected: member');
+                    setEditForm((f) => ({ ...f, role: 'member' }));
+                  }}
+                  style={[styles.tierBtn, editForm.role === 'member' && styles.tierBtnActive]}
+                >
+                  <Text style={[styles.tierBtnText, editForm.role === 'member' && styles.tierBtnTextActive]}>
+                    Member
+                  </Text>
+                </AnimatedPressable>
+                <AnimatedPressable
+                  onPress={() => {
+                    console.log('[AdminMembers] Role selected: admin');
+                    setEditForm((f) => ({ ...f, role: 'admin' }));
+                  }}
+                  style={[styles.tierBtn, editForm.role === 'admin' && styles.tierBtnActiveAdmin]}
+                >
+                  <Text style={[styles.tierBtnText, editForm.role === 'admin' && styles.tierBtnTextActive]}>
+                    Admin
+                  </Text>
+                </AnimatedPressable>
+              </View>
+              {editForm.role === 'admin' && (
+                <View style={styles.adminWarning}>
+                  <Text style={styles.adminWarningText}>
+                    ⚠️ This user will have full access to the admin panel.
+                  </Text>
+                </View>
+              )}
             </View>
           </ScrollView>
 
@@ -604,5 +665,35 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Outfit_600SemiBold',
     color: '#FFFFFF',
+  },
+  tierBtnActiveAdmin: {
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderColor: COLORS.danger,
+  },
+  adminWarning: {
+    marginTop: 8,
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.2)',
+  },
+  adminWarningText: {
+    fontSize: 12,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.danger,
+    lineHeight: 18,
+  },
+  adminRoleBadge: {
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  adminRoleBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Outfit_700Bold',
+    color: COLORS.danger,
+    letterSpacing: 0.5,
   },
 });
