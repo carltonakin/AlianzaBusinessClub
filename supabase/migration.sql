@@ -187,3 +187,16 @@ BEGIN
   DELETE FROM auth.users WHERE id = auth.uid();
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION delete_user_by_id(user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT is_admin() THEN
+    RAISE EXCEPTION 'Access denied';
+  END IF;
+  DELETE FROM auth.users WHERE id = user_id;
+END;
+$$;
