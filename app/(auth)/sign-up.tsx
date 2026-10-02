@@ -104,9 +104,6 @@ export default function SignUpScreen() {
           .eq('id', data.user.id);
         console.log('[SignUp] Profile updated, showing inline success message');
         setSuccess(true);
-        setTimeout(() => {
-          router.replace('/(drawer)/home');
-        }, 2000);
       }
     } catch (err: any) {
       console.error('[SignUp] Unexpected error:', err);
@@ -271,17 +268,29 @@ export default function SignUpScreen() {
               </View>
             ) : null}
 
-            <AnimatedPressable
-              onPress={handleSignUp}
-              disabled={loading}
-              style={styles.createButton}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.createButtonText}>Create Account</Text>
-              )}
-            </AnimatedPressable>
+            {success ? (
+              <AnimatedPressable
+                onPress={() => {
+                  console.log('[SignUp] Continue pressed, navigating to home');
+                  router.replace('/(drawer)/home');
+                }}
+                style={styles.createButton}
+              >
+                <Text style={styles.createButtonText}>Continue</Text>
+              </AnimatedPressable>
+            ) : (
+              <AnimatedPressable
+                onPress={handleSignUp}
+                disabled={loading}
+                style={styles.createButton}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.createButtonText}>Create Account</Text>
+                )}
+              </AnimatedPressable>
+            )}
 
             <View style={styles.signInRow}>
               <Text style={styles.signInPrompt}>Already have an account?</Text>
