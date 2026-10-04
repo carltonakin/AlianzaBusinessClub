@@ -118,6 +118,22 @@ function RootNavigator() {
     registerPushToken(session.user.id);
   }, [session?.user?.id]);
 
+  // Handle notification tap (app backgrounded/closed)
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(() => {
+      console.log('[Notifications] Notification tapped, navigating to notifications screen');
+      router.push('/(drawer)/notifications');
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationReceivedListener((notification) => {
+      console.log('[Notifications] Foreground notification received:', notification.request.content.title);
+    });
+    return () => subscription.remove();
+  }, []);
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
