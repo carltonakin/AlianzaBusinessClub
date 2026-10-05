@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nexus Hub",
     "slug": "nexus-hub",
-    "owner": "alianza-empresarial",
+    "owner": "alianzaempresarial",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -53,7 +53,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2b5bc1c7-549b-42ce-8eae-c706e5cf84f4"
+        "projectId": ""
       },
       "supabaseUrl": "https://idijhtyaiaoxvjfhxqdj.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlkaWpodHlhaWFveHZqZmh4cWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NzQyMTQsImV4cCI6MjEwNTI1MDIxNH0.1PktspQfzZqt0e_UIlqTEGeolxB9dVfCtgEYaG7-k1w"
