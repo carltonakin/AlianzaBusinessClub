@@ -134,6 +134,44 @@ function RootNavigator() {
     return () => subscription.remove();
   }, []);
 
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    if (Platform.OS === 'web') return;
+
+    console.log('[Realtime] Subscribing to push_notifications channel for user:', session.user.id);
+
+    const channel = supabase
+      .channel('new_push_notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'push_notifications' },
+        async (payload) => {
+          console.log('[Realtime] New push_notification row received:', payload.new);
+          try {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: payload.new.title,
+                body: payload.new.body,
+                sound: true,
+              },
+              trigger: null,
+            });
+            console.log('[Realtime] Local notification scheduled for:', payload.new.title);
+          } catch (err) {
+            console.error('[Realtime] Failed to schedule local notification:', err);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] push_notifications channel status:', status);
+      });
+
+    return () => {
+      console.log('[Realtime] Unsubscribing from push_notifications channel');
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id]);
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
